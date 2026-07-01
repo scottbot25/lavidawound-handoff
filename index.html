@@ -1,0 +1,1327 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Wound Handoff Builder — Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--navy:#16242f;--coral:#e0533d;--muted:#44545f;--line:#cdd7df;--bg:#e9eef2;--card:#fff;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--navy);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45;}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 20px 80px;}
+  h1{font-size:21px;margin:0 0 4px;}
+  .sub{color:var(--muted);margin:0 0 16px;font-size:13px;}
+  .phi{background:#fff3f1;border:1px solid #f3c7c0;color:#8f2f24;border-radius:10px;padding:11px 14px;font-size:12.5px;margin-bottom:18px;}
+  .legalnote{background:#f3f6f8;border:1px solid #d8e0e6;color:#44545f;border-radius:9px;padding:9px 13px;font-size:11.5px;line-height:1.4;margin-bottom:16px;}
+  .legalnote b{color:#16242f;}
+  .sheet-disclaimer{margin-top:12px;padding-top:8px;border-top:1px dashed #c2ccd4;color:#6a7681;font-size:10.5px;line-height:1.35;}
+  .cols{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+  .col{flex:1;min-width:330px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 3px 14px rgba(22,36,47,.06);margin-bottom:16px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 0 10px;}
+  .ta-wrap{position:relative;background:#f7fafb;border:1px solid #b9c5cf;border-radius:8px;}
+  .ta-backdrop{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:8px;}
+  .ta-highlights{padding:10px;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;letter-spacing:normal;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;color:transparent;tab-size:4;}
+  .ta-highlights mark{color:transparent;border-radius:2px;padding:0;}
+  .ta-highlights mark.hl-stop{background:rgba(214,69,69,.26);box-shadow:inset 2px 0 0 #d64545;}
+  .ta-highlights mark.hl-confirm{background:rgba(232,160,40,.30);box-shadow:inset 2px 0 0 #e0913a;}
+  .ta-highlights mark.hl-fixed{background:rgba(60,170,90,.28);box-shadow:inset 2px 0 0 #34a853;transition:background .4s;}
+  textarea#noteIn{display:block;width:100%;min-height:200px;margin:0;padding:10px;box-sizing:border-box;border:0;border-radius:8px;background:transparent;position:relative;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;letter-spacing:normal;color:var(--navy);white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;tab-size:4;resize:vertical;}
+  textarea{width:100%;min-height:200px;border:1px solid #b9c5cf;border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--navy);background:#f7fafb;resize:vertical;}
+  textarea:focus{outline:2px solid var(--navy);outline-offset:-1px;background:#fff;}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  button{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:7px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  button:hover{background:#eef2f5;}
+  button.primary{background:var(--coral);border-color:var(--coral);color:#fff;}
+  button.vault-btn{background:#1f6f43;border-color:#1f6f43;color:#fff;font-weight:600;}
+  button.vault-btn:disabled{opacity:.6;cursor:default;}
+  .vault-result{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.4;}
+  .vault-result.vault-ok{background:#e7f5ec;border:1px solid #7fc79b;color:#1f6f43;}
+  .vault-result.vault-err{background:#fdecea;border:1px solid #e6a29a;color:#b23c2e;}
+  .vault-result a{color:inherit;font-weight:600;}
+  @media print{.vault-result,button.vault-btn{display:none !important;}}
+  button.primary.notready{opacity:.6;}
+  button.primary:hover{background:#cf4631;border-color:#cf4631;}
+  button.ghost{color:var(--muted);border-color:#b9c5cf;}
+  .preview{margin-top:12px;border-top:1px solid #eef2f5;padding-top:12px;}
+  .kv{display:flex;gap:8px;padding:2px 0;font-size:13px;}
+  .kv .k{flex:0 0 150px;color:var(--muted);}
+  .kv .v{font-weight:600;}
+  .wblock{border:1px solid #e3e9ed;border-radius:8px;padding:10px 12px;margin-top:10px;background:#f7fafb;}
+  .wblock .wh{font-weight:700;color:var(--coral);margin-bottom:6px;}
+  .empty{color:#93a1ad;font-style:italic;font-size:13px;}
+  .roster-item{border:1px solid #e3e9ed;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .roster-item .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pill{display:inline-block;background:#e7edf1;border-radius:999px;padding:1px 8px;font-size:11px;color:#3f4f5a;margin-right:4px;}
+  .count{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;}
+  .checks{margin-top:12px;border-top:1px solid #eef2f5;padding-top:10px;}
+  .checks-h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:6px;}
+  .chk{font-size:12.5px;padding:6px 9px;border-radius:6px;margin-bottom:5px;}
+  .chk.ok{background:#dcf0e4;color:#166537;}
+  .chk.confirm{background:#fbe6cf;color:#8a4f0c;}
+  .chk.confirm label{display:flex;gap:7px;align-items:flex-start;cursor:pointer;}
+  .chk.stop{background:#fbdcd7;color:#a8281b;font-weight:600;border-left:3px solid #b4271a;}
+  .gate-stop{color:#a8281b;font-size:12px;font-weight:600;margin-left:6px;}
+  .gate-confirm{color:#8a4f0c;font-size:12px;margin-left:6px;}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  .attest{background:#eef4ff;border:1px solid #b9cdf0;border-left:5px solid #3a66c4;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:13px;}
+  .attest label{display:flex;gap:8px;align-items:flex-start;cursor:pointer;color:#1f3a6b;}
+  .attest input{margin-top:2px;flex:0 0 auto;}
+  .attest span{flex:1;}
+  .ed{min-width:28px;display:inline-block;padding:0 2px;border-radius:3px;}
+  #preview.editing .ed{border-bottom:1px dashed #9bb0c4;cursor:text;}
+  #preview.editing .ed:focus{outline:none;background:#fffbe6;border-bottom:1px solid #d98e00;}
+  .ed.edited{background:#fff4d6;border-bottom:1px solid #d98e00;color:#7a4d00;font-weight:700;}
+  .ed.field-stop{outline:2px solid #e24b4a;outline-offset:1px;background:#fceaea;border-radius:3px;}
+  .ed.field-confirm{outline:2px solid #d98e00;outline-offset:1px;background:#fff4d6;border-radius:3px;}
+  .ed.field-flash{animation:fieldflash 1.3s ease;}
+  @keyframes fieldflash{0%,100%{box-shadow:0 0 0 0 rgba(226,75,74,0);}25%{box-shadow:0 0 0 6px rgba(226,75,74,.5);}}
+  .chk-loc{cursor:pointer;color:#185fa5;font-size:11px;white-space:nowrap;text-decoration:underline;margin-left:4px;}
+  .chk-loc:hover{color:#0c447c;}
+  .chk-grp{font-weight:700;font-size:11.5px;letter-spacing:.02em;text-transform:uppercase;margin:10px 0 4px;}
+  .chk-grp-stop{color:#b1402f;}
+  .chk-grp-confirm{color:#9a6a00;}
+  .chk-grp:first-child{margin-top:0;}
+  .signoff{margin-top:14px;border:1px solid #cdd8e0;border-radius:10px;padding:12px 14px;background:#f5f8fb;}
+  .signoff-h{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#44545f;margin-bottom:8px;}
+  .so-item{display:flex;align-items:flex-start;gap:4px;padding:5px 0;border-top:1px solid #e6edf2;}
+  .so-item:first-of-type{border-top:none;}
+  .so-item label{display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;flex:1;}
+  .so-item input{margin-top:2px;width:16px;height:16px;flex:0 0 auto;}
+  .so-item.so-attest{margin-top:2px;}
+  .so-item.so-warn{background:#fff4e5;border-radius:6px;padding:6px 8px;margin:2px 0;border-top:none;}
+  .so-item .chk-loc{align-self:center;}
+  .notediff{background:#fff4d6;border:1px solid #e3b34a;border-left:5px solid #d98e00;color:#7a4d00;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;}
+  .notediff .nd-add{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:#1f7a3d;background:#eafaef;border-radius:5px;padding:5px 8px;margin-top:6px;white-space:pre-wrap;}
+  .notediff .nd-rem{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:#b1402f;background:#fceaea;border-radius:5px;padding:5px 8px;margin-top:6px;white-space:pre-wrap;text-decoration:line-through;}
+  .notediff .nd-tip{font-size:11.5px;font-style:italic;margin-top:6px;color:#8a6a1f;}
+  .nd-ack{display:flex;align-items:center;gap:7px;margin-top:9px;padding-top:8px;border-top:1px dashed #e3b34a;font-size:12.5px;font-weight:600;color:#7a4d00;cursor:pointer;}
+  .nd-ack input{width:16px;height:16px;}
+  label.need{outline:2px solid #d4584a;outline-offset:3px;border-radius:5px;}
+  .sheet-stamp{background:#fceaea;border:1.5px solid #d4584a;color:#9a2a1c;font-weight:700;font-size:12.5px;border-radius:6px;padding:8px 12px;margin:8px 0 0;}
+  .count-badge{display:inline-block;background:var(--navy);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:2px 11px;margin-left:8px;vertical-align:middle;}
+  .badge-corr{background:#f6dcd8;color:#9a2a1c;border:1px solid #d4584a;border-radius:999px;font-size:10px;font-weight:700;padding:1px 7px;margin-left:4px;}
+  .unit{color:#93a1ad;font-size:12px;margin-left:5px;}
+  .edithint{font-size:11.5px;color:#93a1ad;margin-bottom:8px;font-style:italic;}
+  .diffbanner{background:#fff4d6;border:1px solid #e3b34a;border-left:5px solid #d98e00;color:#7a4d00;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:12px;}
+  .badge-edit{display:inline-block;background:#d98e00;color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;padding:1px 6px;border-radius:999px;vertical-align:middle;}
+  .badge-dup{display:inline-block;background:#c0392b;color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;padding:1px 7px;border-radius:999px;vertical-align:middle;margin-left:4px;}
+  .roster-item.roster-dup{background:#fcecea;border-color:#e0a59c;}
+  .clearprompt{background:#fff4d6;border:1px solid #e3b34a;border-left:5px solid #d98e00;color:#7a4d00;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;}
+  .clearprompt .cp-btns{display:flex;gap:6px;flex-wrap:wrap;}
+  .clearprompt button{font-size:12px;padding:6px 10px;}
+  .undobar{background:#eef2f5;border:1px solid #cdd7df;border-radius:8px;padding:8px 11px;margin-bottom:10px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;color:#44545f;}
+  .linkbtn{background:none;border:none;color:#16242f;font-weight:700;font-size:12.5px;cursor:pointer;padding:2px 6px;text-decoration:underline;}
+  .linkbtn.dim{color:#93a1ad;font-weight:600;text-decoration:none;}
+  .phead{cursor:pointer;}
+  .phead .caret{display:inline-block;color:#16242f;font-size:13px;margin-right:4px;transition:transform .15s;flex:0 0 auto;}
+  .patient.collapsed .caret{transform:rotate(-90deg);}
+  .psummary{color:#44545f;font-size:12px;background:#eef2f5;border-radius:999px;padding:1px 9px;align-self:center;}
+  .patient.collapsed .pbody{display:none;}
+  .patient.collapsed .pf-sec{display:none;}
+  .patient.collapsed .phead{border-bottom-width:1px;padding-bottom:8px;margin-bottom:0;}
+  .collapsebar{margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .collapsebar .hint{color:#93a1ad;font-size:11.5px;font-style:italic;}
+  @media print{
+    .noprint{display:none!important;}
+    .patient .pbody{display:block!important;}
+    .patient .pf-sec{display:flex!important;}
+    .phead .caret{display:none!important;}
+  }
+  .pending{background:#fff4d6;border:1px solid #e3b34a;border-left:5px solid #d98e00;color:#7a4d00;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .pending button{border-color:#d98e00;}
+  #addBtn:not(:disabled){animation:addpulse 1.4s ease-in-out infinite;}
+  @keyframes addpulse{0%,100%{box-shadow:0 0 0 0 rgba(224,83,61,.5);}50%{box-shadow:0 0 0 6px rgba(224,83,61,0);}}
+  /* handoff output */
+  #sheet{display:none;}
+  .patient{border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;background:#fff;}
+  .phead{display:flex;flex-wrap:wrap;gap:6px 22px;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:12px;}
+  .phead .pf{font-size:13px;}
+  .phead .pf b{color:var(--navy);}
+  .wgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 22px;margin-top:6px;}
+  .wrow{display:flex;gap:8px;font-size:13px;padding:2px 0;border-bottom:1px solid #f0f3f6;}
+  .wrow .k{flex:0 0 130px;color:var(--muted);}
+  .wrow .v{font-weight:600;}
+  .wtitle{font-weight:700;color:var(--coral);margin:12px 0 4px;}
+  .plan{margin-top:10px;font-size:13px;}
+  .plan b{color:var(--navy);}
+  .plan ul{margin:4px 0 0;padding-left:20px;}
+  .sv:empty::before{content:'\2014';color:#93a1ad;font-style:italic;}
+  .patient.editing .sv{outline:1px dashed #b9c4cd;border-radius:3px;padding:0 4px;cursor:text;min-width:16px;display:inline-block;}
+  .patient.editing .sv:focus{outline:2px solid var(--coral);background:#fff;}
+  .patient.editing .sv.sedited{background:#fff4d6;}
+  .sheetbanner{display:none;}
+  .wflag{position:relative;display:inline-block;margin-left:6px;vertical-align:baseline;}
+  .wflag-ic{color:#d98e00;cursor:pointer;font-weight:700;font-size:13px;}
+  .wflag-msg{display:none;position:absolute;left:0;top:20px;z-index:6;width:230px;background:#fff4d6;border:1px solid #e3b34a;color:#7a4d00;font-size:11.5px;line-height:1.4;padding:7px 9px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.14);font-weight:400;white-space:normal;}
+  .wflag.open .wflag-msg{display:block;}
+  .editrow{margin-top:14px;display:flex;align-items:center;gap:10px;}
+  .editbtn{font-size:12px;padding:5px 14px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--navy);cursor:pointer;}
+  .editbtn:hover{background:#f3f6f8;}
+  .edithint{color:#93a1ad;font-size:11.5px;font-style:italic;}
+  @media print{ .sv{outline:none!important;background:transparent!important;} }
+  @media print{
+    body{background:#fff;} .wrap>*:not(#sheet){display:none!important;} #sheet{display:block!important;}
+    .patient{page-break-after:always;border:none;padding:0;}
+    .sheet-stamp{display:none!important;}
+  }
+  /* on-screen print preview */
+  #ppbar{position:fixed;top:0;left:0;right:0;z-index:60;background:#16242f;color:#fff;display:none;align-items:center;justify-content:space-between;gap:12px;padding:9px 18px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.3);}
+  #ppbar button{font-size:12.5px;padding:5px 14px;border-radius:6px;border:1px solid #46586a;background:#23323f;color:#fff;cursor:pointer;}
+  #ppbar button.pp-primary{background:var(--coral);border-color:var(--coral);}
+  body.ppmode{background:#5c6b77;}
+  body.ppmode .wrap>*:not(#sheet):not(#ppbar){display:none!important;}
+  body.ppmode #ppbar{display:flex;}
+  body.ppmode #sheet{display:block!important;background:#fff;max-width:8.2in;margin:60px auto 40px;padding:0.55in 0.6in;box-shadow:0 6px 30px rgba(0,0,0,.4);border-radius:2px;}
+  body.ppmode #sheet .noprint{display:none!important;}
+  body.ppmode #sheet .sheet-stamp{display:none!important;}
+  body.ppmode .patient{border:none;padding:0;margin:0 0 30px;}
+  body.ppmode .patient .pbody{display:block!important;}
+  body.ppmode .patient .pf-sec{display:flex!important;}
+  body.ppmode .phead .caret{display:none!important;}
+  body.ppmode .patient+.patient{border-top:1px dashed #c9d2da;padding-top:26px;}
+</style>
+
+<div class="wrap">
+  <h1>Wound Handoff Builder <span style="font-weight:400;color:#93a1ad;font-size:14px;">— prototype</span></h1>
+  <p class="sub">Parse one finished PCC note, verify the fields, add the patient to today's running list, then generate a clean handoff sheet for the facility.</p>
+  <div class="phi"><strong>Handles PHI.</strong> This prototype keeps everything in memory only — nothing is stored or sent, and refreshing clears it. For real use it must run inside your M365/HIPAA environment, with exports saved to the SharePoint vault and delivered to the facility over a secure channel.</div>
+  <div class="legalnote"><b>Internal care-coordination tool — not an official record.</b> The handoff sheet this produces is a working summary to help facility nursing staff coordinate wound care. It is not an official medical record, provider note, or billing document. The signed note in the EHR remains the authoritative record.</div>
+  <div id="pendingBanner" class="pending" style="display:none"></div>
+
+  <div class="cols">
+    <div class="col">
+      <div class="card">
+        <h2>1 · Paste one finished note</h2>
+        <div class="ta-wrap"><div class="ta-backdrop"><div id="noteHighlights" class="ta-highlights"></div></div><textarea id="noteIn" placeholder="Paste the full text of a single PCC note (Initial or Follow-up)…"></textarea></div>
+        <div class="btnrow">
+          <button class="primary" onclick="parseNote()">Parse &amp; preview</button>
+          <button class="ghost" onclick="clearNote()">Clear</button>
+        </div>
+        <div id="preview" class="preview"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h2>2 · Today's running list <span class="count-badge" id="rosterCountBadge">0 patients</span></h2>
+        <div class="count" id="rosterMeta">Facility: <b id="facLabel">—</b> · <span id="rosterCount">0</span> patient(s)</div>
+        <div id="roster"></div>
+        <div class="btnrow">
+          <button class="primary" onclick="generateSheet()">Generate handoff sheet</button>
+          <button onclick="printPreview()">Print preview</button>
+          <button onclick="printSheet()">Print</button>
+          <button class="vault-btn" id="saveVaultBtn" onclick="saveToVault()">Save to ClinicalVault</button>
+          <button class="primary" onclick="downloadWord()">Download Word (.docx)</button>
+          <button onclick="downloadSheet()">Download .html</button>
+          <button class="ghost" onclick="clearRoster()">Clear list</button>
+        </div>
+        <div class="note">Print or download produces the facility handoff. Page breaks between patients. <b>Save to ClinicalVault</b> signs you in and uploads the Word handoff straight to SharePoint.</div>
+        <div id="vaultResult" class="vault-result" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ppbar"><span>Print preview — exactly how the handoff will print (<span id="ppCount">0</span> patient(s), stamp hidden)</span><span><button class="pp-primary" onclick="window.print()">Print now</button> <button onclick="exitPreview()">Exit preview</button></span></div>
+  <div id="sheet"></div>
+</div>
+
+<!-- Microsoft Authentication Library (self-hosted, same-origin — no third-party CDN). Must be deployed next to index.html. -->
+<script src="msal-browser.min.js"></script>
+<script>
+/* ---------------- sample notes (plain copy format) ---------------- */
+var SAMPLES = {
+initial:`LaVida Heal
+Wound Care History & Physical (Initial Visit)
+Patient: Doe, Jane (SAMPLE)
+Facility: Crestmoor Healthcare
+Date of Service: 06/18/2026
+Provider: Abby Mehler, PA-C
+
+Subjective / HPI
+Patient referred for wound care evaluation. Facility reports a sacral wound present on admission and a stable heel finding.
+
+Anticoagulation Screen
+History of blood clots (DVT/PE): No
+Currently on anticoagulant / antiplatelet: Yes (aspirin 81 mg)
+
+Physical Exam
+General: Alert, no acute distress
+DP/PT pulses: Palpable
+Neuropathy / protective sensation: Intact
+
+Wound 1 — Sacrum
+Location / laterality: Sacrum, midline
+Measurements (L × W × D, cm): 4.2 × 3.5 × 0.8
+Surface area (cm²): 14.7 (auto-calculated)
+Etiology / classification: Pressure injury, Stage 3
+Status: Not healed
+Wound bed: 40% granulation, 50% slough, 5% epithelialization, 5% fibrin/exudate
+Exposed structures: Subcutaneous tissue
+Drainage: Moderate, serosanguineous, thin, mild odor
+Undermining / tunneling: None / none
+Periwound: Macerated
+Procedure performed this visit: Yes
+Debridement: Selective sharp (curette) → CPT 11042
+Pre / post measurements (cm): 4.2 × 3.5 × 0.8 → 4.0 × 3.3 × 0.6
+Surface area debrided (cm²): 13.2
+Deepest tissue debrided: Subcutaneous tissue
+Instrument used: Curette
+Tolerance: Tolerated well
+
+Wound 2 — Right Heel
+Location / laterality: Right heel, posterior
+Measurements (L × W × D, cm): 3.0 × 2.5 × depth not assessed (intact eschar)
+Surface area (cm²): 7.5 (auto-calculated)
+Etiology / classification: Pressure injury, unstageable (stable dry eschar)
+Status: Stable
+Wound bed: 100% eschar — dry, intact, non-fluctuant
+Exposed structures: None
+Drainage: None
+Undermining / tunneling: None / none
+Periwound: Intact, no erythema
+Procedure performed this visit: No
+
+Assessment
+1. Stage 3 sacral pressure injury (L89.153) with slough — debrided today; no clinical infection.
+2. Right heel pressure injury, unstageable (L89.613), with stable dry eschar — intact, left in place; offload and monitor.
+
+Plan
+Wound 1 (sacrum): selective debridement done today; collagen + foam, change every 3 days and PRN.
+Wound 2 (heel): offload, float heels, monitor intact eschar; do not debride unless it destabilizes.
+Offloading: air mattress and q2h turns.
+Encourage protein supplementation; dietitian evaluation requested.
+Re-evaluation in one week.`,
+
+followup:`LaVida Heal
+Weekly Wound Care Progress Note (Follow-up Visit)
+Patient: Doe, Jane (SAMPLE)
+Facility: Crestmoor Healthcare
+Date of Service: 06/25/2026
+Provider: Abby Mehler, PA-C
+
+Subjective
+Patient comfortable, no new complaints.
+
+Objective — Physical Exam
+General: Alert, no acute distress
+DP/PT pulses: Palpable
+
+Wound 1 — Sacrum
+Current measurements (L × W × D, cm): 3.6 × 3.0 × 0.4
+Prior measurements (L × W × D, cm): 4.2 × 3.5 × 0.8
+Surface area (cm²): 10.8 (down from 14.7 — 27% reduction)
+Etiology / classification: Pressure injury, Stage 3
+Status: Improving
+Wound bed: 70% granulation, 20% slough, 0% eschar, 10% epithelialization
+Drainage: Scant, serous, thin, no odor
+Undermining / tunneling: None / none
+Periwound: Normal (maceration resolved)
+
+Procedure — Debridement
+Procedure performed this visit: Yes
+Tissue type removed: Residual slough
+Pre-debridement measurements (cm): 3.6 × 3.0 × 0.4
+Post-debridement measurements (cm): 3.5 × 2.9 × 0.4
+Surface area debrided (cm²): 8.5
+Deepest tissue debrided: Dermis
+Type of debridement: Selective (curette) → CPT 97597
+Instrument used: Curette
+Tolerance: Tolerated well
+
+Assessment
+Stage 3 sacral pressure injury (L89.153), improving — 27% surface-area reduction over one week.
+
+Plan
+Continue collagen + foam dressings, change every 3 days and PRN.
+Continue air mattress and q2h turns.
+Re-evaluation in one week.`,
+
+tampered:`LaVida Heal
+Wound Care History & Physical (Initial Visit)
+Patient: Roe, John 7 (SAMPLE)
+Facility: Crestmoor Healthcare
+Date of Service: 12/31/2099
+Provider: Abby Mehler, PA-C
+
+Wound 1 — Sacrum
+Location / laterality: Sacrum, midline
+Measurements (L × W × D, cm): 42 × 3.5 × 0.8
+Surface area (cm²): 14.7 (auto-calculated)
+Etiology / classification: Pressure injury, Stage 3
+Status: Not healed
+Wound bed: 40% granulation, 50% slough, 5% epithelialization
+Drainage: Moderate, serosanguineous
+Periwound: Macerated
+Procedure performed this visit: Yes
+Deepest tissue debrided: Subcutaneous tissue
+
+Plan
+Re-evaluation in one week.`
+};
+/* ---------------- parser ---------------- */
+function norm(s){return (s||"").toLowerCase().replace(/[^a-z0-9]/g,"");}
+function strip(line){return line.replace(/\*\*/g,"").replace(/^#+\s*/,"").trim();}
+function splitLV(line){
+  var i=line.indexOf(":");
+  if(i>-1) return {label:line.slice(0,i).trim(), value:line.slice(i+1).trim()};
+  var t=line.indexOf("\t");
+  if(t>-1) return {label:line.slice(0,t).trim(), value:line.slice(t+1).trim()};
+  var m=line.match(/^(.+?)\s{2,}(.+)$/);
+  if(m) return {label:m[1].trim(), value:m[2].trim()};
+  return null;
+}
+function eqAny(n,arr){for(var i=0;i<arr.length;i++){if(n===arr[i]||n.indexOf(arr[i])===0)return true;}return false;}
+
+var WOUND_LABELS=["locationlaterality","location","priormeasurements","priordimensions","currentmeasurements","measurements","dimensions","etiologyclassification","etiology","woundbed","woundbase","exposedstructures","underminingtunneling","tunnelingundermining","undermining","tunneling","procedureperformedthisvisit","procedureperformed","typeofdebridement","debridement","deepesttissuedebrided","deepesttissue","instrumentused","instrument","tissuetyperemoved","tolerance"];
+function isKnownLabel(n){
+  if(["patient","facility","dateofservice","dos","status","drainage","periwound","provider"].indexOf(n)>-1)return true;
+  if(n.indexOf("surfacearea")===0)return true;
+  return eqAny(n,WOUND_LABELS);
+}
+function assignField(pt,cur,label,value){
+  var n=norm(label), v=value;
+  if(n==="patient"){pt.patient=v;return true;}
+  if(n==="facility"){pt.facility=v;return true;}
+  if(n==="dateofservice"||n==="dos"){pt.dos=v;return true;}
+  if(n==="provider"){pt.provider=v;return true;}
+  if(!cur)return false;
+  if(eqAny(n,["locationlaterality","location"])){cur.locField=v; if(!cur.location)cur.location=v; return true;}
+  if(eqAny(n,["priormeasurements","priordimensions"])){cur.prior=v;return true;}
+  if(eqAny(n,["currentmeasurements","measurements","dimensions"]) && !/predebr|postdebr|preposit|preslashpost|prepost/.test(n)){ if(!cur.dims)cur.dims=v; return true;}
+  if(n.indexOf("surfacearea")===0){ if(n.indexOf("debrided")<0 && !cur.sa)cur.sa=v; return true;}
+  if(eqAny(n,["etiologyclassification","etiology"])){cur.etiology=v;return true;}
+  if(n==="status"){cur.status=v;return true;}
+  if(eqAny(n,["woundbed","woundbase"])){cur.bed=v;return true;}
+  if(eqAny(n,["exposedstructures"])){cur.exposed=v;return true;}
+  if(eqAny(n,["underminingtunneling","tunnelingundermining","undermining","tunneling"])){cur.undermining=v;return true;}
+  if(n==="drainage"){cur.drainage=v;return true;}
+  if(n==="periwound"){cur.periwound=v;return true;}
+  if(eqAny(n,["procedureperformedthisvisit","procedureperformed"])){cur.proc=v;return true;}
+  if(eqAny(n,["typeofdebridement","debridement"])){cur.debr=v;return true;}
+  if(eqAny(n,["deepesttissuedebrided","deepesttissue"])){cur.deepest=v;return true;}
+  if(eqAny(n,["instrumentused","instrument"])){cur.instrument=v;return true;}
+  if(eqAny(n,["tissuetyperemoved"])){cur.tissueRemoved=v;return true;}
+  if(n.indexOf("tolerance")===0){cur.tolerance=v;return true;}
+  return false;
+}
+
+function parseNoteCore(text){
+  text = text!=null?text:document.getElementById("noteIn").value;
+  var lines=text.split(/\r?\n/);
+  var pt={patient:"",facility:"",dos:"",provider:"",dx:[],plan:[],wounds:[]};
+  var cur=null, inPlan=false;
+  for(var idx=0;idx<lines.length;idx++){
+    var raw=strip(lines[idx]); if(!raw)continue;
+    // ICD-10 capture anywhere
+    var icd=raw.match(/\b[A-Z]\d{2}\.\d+\b/g); if(icd){icd.forEach(function(c){if(pt.dx.indexOf(c)<0)pt.dx.push(c);});}
+    // section toggles
+    if(/^plan\b/i.test(raw)){inPlan=true;cur=null;continue;}
+    if(/^(assessment|medical decision|subjective|objective|physical exam|hpi|review of systems|anticoagulation)/i.test(raw)){inPlan=false;cur=null;}
+    // plan lines captured first so "Wound 1 (sacrum):" in the plan isn't read as a heading
+    if(inPlan){pt.plan.push(raw);continue;}
+    // wound heading (accepts em-dash, hyphen, or colon as separator)
+    var wh=raw.match(/^wound\s*\d+\s*[—–:-]\s*(.*)$/i);
+    if(wh){cur={location:wh[1]||"",locField:"",__src:raw,etiology:"",dims:"",prior:"",sa:"",status:"",bed:"",exposed:"",undermining:"",drainage:"",periwound:"",proc:"",debr:"",deepest:"",instrument:"",tissueRemoved:"",tolerance:""};pt.wounds.push(cur);inPlan=false;continue;}
+    if(/^procedure\s*[—-]/i.test(raw)){inPlan=false;continue;} // "Procedure — Debridement" heading; keep attaching to current wound
+    if(cur)cur.__src+="\n"+raw; // accumulate this wound's own source text
+    var lv=splitLV(raw);
+    if(lv){ assignField(pt,cur,lv.label,lv.value); continue; }
+    // separate-line format: a bare label on one line, its value on the next
+    if(isKnownLabel(norm(raw))){
+      var j=idx+1; while(j<lines.length && !strip(lines[j])) j++;
+      if(j<lines.length){
+        var nextRaw=strip(lines[j]);
+        if(!isKnownLabel(norm(nextRaw)) && !/^wound\s*\d+\s*[—–:-]/i.test(nextRaw) && !splitLV(nextRaw)){
+          if(cur)cur.__src+="\n"+nextRaw;
+          assignField(pt,cur,raw,nextRaw);
+          idx=j; continue;
+        }
+      }
+    }
+  }
+  return pt;
+}
+
+/* ---------------- helpers for handoff fields ---------------- */
+function progress(status){
+  var s=(status||"").toLowerCase();
+  if(/wors|enlarg|deteriorat|declin|necro/.test(s))return "Worse";
+  if(/not heal|unhealed|non-?healing/.test(s))return status; // baseline state, show as-is
+  if(/improv|healing|granulat|epithelial|resolv|closing|closed|\bhealed\b/.test(s))return "Better";
+  if(/stable|unchanged|no change|stalled|static|plateau/.test(s))return "Stable";
+  return status||"—";
+}
+function dbt(deepest){
+  var s=(deepest||"").toLowerCase();
+  if(/bone/.test(s))return "Bone";
+  if(/muscle|fascia/.test(s))return "Muscle";
+  if(/subcut|sub-q|subq|fat/.test(s))return "Sub-Q";
+  if(/dermis|epiderm|skin|partial/.test(s))return "Skin/Dermis";
+  return deepest||"—";
+}
+function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function val(s){return (s&&String(s).trim())?esc(s):"<span class='empty'>—</span>";}
+function withCm(v){if(!v)return v;v=String(v);if(/cm/i.test(v))return v;return /\d\s*$/.test(v.trim())?(v.trim()+" cm"):v;}
+function withCm2(v){if(!v)return v;v=String(v);if(/cm²|cm2/i.test(v))return v;return v.replace(/^(\s*\d+(?:\.\d+)?)/,"$1 cm²");}
+function valDim(v){return (v&&String(v).trim())?esc(withCm(v)):"<span class='empty'>—</span>";}
+function valSA(v){return (v&&String(v).trim())?esc(withCm2(v)):"<span class='empty'>—</span>";}
+
+/* ---------------- facility canonicalization (for FILING only) ----------------
+   Add a facility by adding a row: {canonical:"Folder Name", aliases:["how","it","might","appear"]}
+   The canonical name is used for the SharePoint folder + the download filename.
+   The note's original facility text is left untouched on the handoff document,
+   so the round-trip validator never false-trips when a note uses a short code. */
+var FACILITY_MAP = [
+  {canonical:"University Heights", aliases:["uh","university heights","university heights rehab & care community","university heights rehab and care community"]},
+  {canonical:"Crestmoor",         aliases:["cm","crestmoor","crestmoor care center","crestmoor healthcare"]}
+];
+function _facNorm(s){return String(s==null?"":s).toLowerCase().replace(/\s+/g," ").trim();}
+function canonicalFacility(raw){
+  var n=_facNorm(raw); if(!n) return "";
+  for(var i=0;i<FACILITY_MAP.length;i++){
+    var f=FACILITY_MAP[i], c=f.canonical.toLowerCase();
+    if(n===c) return f.canonical;
+    for(var j=0;j<f.aliases.length;j++){ if(n===_facNorm(f.aliases[j])) return f.canonical; }
+    if(n.indexOf(c)>-1) return f.canonical;              // "university heights rehab..." contains canonical
+  }
+  return String(raw==null?"":raw).trim();                // unknown → file under its own name, nothing lost
+}
+function facilityIsKnown(raw){
+  var n=_facNorm(raw); if(!n) return false;
+  return FACILITY_MAP.some(function(f){
+    if(n===f.canonical.toLowerCase()) return true;
+    if(f.aliases.some(function(a){return _facNorm(a)===n;})) return true;
+    return n.indexOf(f.canonical.toLowerCase())>-1;
+  });
+}
+function isoDate(raw){
+  var m=String(raw==null?"":raw).match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){var mm=("0"+m[1]).slice(-2),dd=("0"+m[2]).slice(-2),yy=m[3].length===2?("20"+m[3]):m[3];return yy+"-"+mm+"-"+dd;}
+  return String(raw==null?"":raw).trim();
+}
+function currentFacilityRaw(){return roster.length?(roster[0].facility||""):"";}
+function currentDosRaw(){return roster.length?(roster[0].dos||""):"";}
+/* Folder path for the future Save-to-ClinicalVault upload: Daily Handoffs/<Facility>/<YYYY-MM-DD> */
+function facilityFolderPath(){
+  var fac=canonicalFacility(currentFacilityRaw())||"Unfiled";
+  var d=isoDate(currentDosRaw())||"undated";
+  return "Daily Handoffs/"+fac+"/"+d;
+}
+
+/* ---------------- transfer validation engine ---------------- */
+var KNOWN_FACILITIES = FACILITY_MAP.map(function(f){return f.canonical;});
+function nums(s){var m=(s||"").match(/\d+(?:\.\d+)?/g);return m?m.map(Number):[];}
+function nmatch(s){return (s||"").toLowerCase().replace(/[—–]/g,"-").replace(/\s+/g," ").trim();}
+function validateTransfer(pt, noteText){
+  var checks=[]; // {sev:'stop'|'confirm'|'ok', msg}
+  var srcAll=nmatch(noteText);
+  var EDIT=(pt&&pt.__edited)||{}; // fields the provider edited in place — note round-trip is relaxed for these (clinical checks still apply)
+  function stop(m,key){checks.push({sev:"stop",msg:m,key:key||null});}
+  function confirm(m,key){checks.push({sev:"confirm",msg:m,key:key||null});}
+  function inAll(v){var n=nmatch(v);return n.length<2||srcAll.indexOf(n)>-1;}
+  function inBlock(v,src){var n=nmatch(v);return n.length<2||nmatch(src).indexOf(n)>-1;}
+
+  // one note only
+  var dosCount=(noteText.match(/date of service\s*:/gi)||[]).length;
+  var patCount=(noteText.match(/(^|\n)\s*patient\s*:/gi)||[]).length;
+  if(dosCount>1||patCount>1) stop("More than one note detected — paste a single visit's note.");
+
+  // patient identifiers: present + faithful to the note
+  [["Patient",pt.patient,"patient"],["Facility",pt.facility,"facility"],["Date of Service",pt.dos,"dos"],["Provider",pt.provider,"provider"]].forEach(function(x){
+    if(!x[1]) stop("Missing "+x[0]+".","h."+x[2]);
+    else if(!inAll(x[1]) && !EDIT["h."+x[2]]) stop(x[0]+" on the sheet doesn't match the note — parse error.","h."+x[2]);
+  });
+
+  // wound count: note headings must equal captured wounds (nothing dropped or merged)
+  var headingCount=(noteText.match(/(^|\n)\s*\**\s*wound\s*\d+\s*[—–:-]/gi)||[]).length;
+  if(headingCount && headingCount!==pt.wounds.length)
+    stop("Note has "+headingCount+" wound heading(s) but "+pt.wounds.length+" captured — a wound may be merged or dropped.");
+  if(!pt.wounds.length) stop("No wounds captured.");
+
+  // every wound-section field is critical: present + found in THIS wound's own block
+  var FIELDS=[
+    ["location",function(w){return w.location;},"location"],
+    ["location/laterality",function(w){return w.locField;},"locField"],
+    ["etiology/classification",function(w){return w.etiology;},"etiology"],
+    ["measurements",function(w){return w.dims;},"dims"],
+    ["prior measurements",function(w){return w.prior;},"prior"],
+    ["surface area",function(w){return w.sa;},"sa"],
+    ["status",function(w){return w.status;},"status"],
+    ["wound bed",function(w){return w.bed;},"bed"],
+    ["exposed structures",function(w){return w.exposed;},"exposed"],
+    ["undermining/tunneling",function(w){return w.undermining;},"undermining"],
+    ["drainage",function(w){return w.drainage;},"drainage"],
+    ["periwound",function(w){return w.periwound;},"periwound"],
+    ["procedure performed",function(w){return w.proc;},"proc"],
+    ["debridement type",function(w){return w.debr;},"debr"],
+    ["deepest tissue",function(w){return w.deepest;},"deepest"],
+    ["instrument",function(w){return w.instrument;},"instrument"]
+  ];
+  // fields that only exist on one note type or when a procedure occurred — absence is OK, a wrong value is not
+  var CONDITIONAL={"prior measurements":1,"debridement type":1,"deepest tissue":1,"instrument":1,"exposed structures":1,"undermining/tunneling":1,"location/laterality":1};
+  // SOFT = the note offers an explicit "none" option, so a value (including "none") is complete; only a truly blank field is flagged, and only as a verify (never a hard stop)
+  var SOFT={"drainage":1,"undermining/tunneling":1};
+
+  pt.wounds.forEach(function(w,i){
+    var tag="Wound "+(i+1)+": ", src=w.__src||"";
+    FIELDS.forEach(function(f){
+      var name=f[0], v=f[1](w);
+      if(!v){
+        if(SOFT[name]) confirm(tag+name+" is blank — enter a value or \u201cnone\u201d on the note.");
+        else if(!CONDITIONAL[name]) stop(tag+"missing "+name+".");
+        return;
+      }
+      if(!inBlock(v,src) && !EDIT["w"+i+"."+f[2]]) stop(tag+name+" \""+v+"\" was not found in this wound's section of the note — possible mix-up between wounds.");
+    });
+    // heading site vs Location/laterality field agreement (right location)
+    if(w.location && w.locField){
+      var ta=nmatch(w.location).replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(Boolean);
+      var tb=nmatch(w.locField).replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(Boolean);
+      var setB={}; tb.forEach(function(x){setB[x]=1;});
+      var overlap=ta.filter(function(x){return setB[x];}).length;
+      var latA=ta.indexOf("left")>-1?"left":(ta.indexOf("right")>-1?"right":"");
+      var latB=tb.indexOf("left")>-1?"left":(tb.indexOf("right")>-1?"right":"");
+      if(latA&&latB&&latA!==latB) stop(tag+"location laterality differs — heading says \""+w.location+"\", field says \""+w.locField+"\".");
+      else if(overlap===0) stop(tag+"heading site (\""+w.location+"\") and location field (\""+w.locField+"\") share no terms — verify location.");
+    }
+    // measurement accuracy: surface area must match L×W
+    var dn=nums(w.dims), san=nums(w.sa);
+    if(w.dims && dn.length<2) stop(tag+"measurements aren't readable as numbers (\""+w.dims+"\") — verify.");
+    if(w.dims && !/^\s*[\u2212\u2013\-]?\s*\d/.test(w.dims)) stop(tag+"measurements should begin with a number (\""+w.dims+"\") — verify.");
+    if(dn.length>3) confirm(tag+"measurements contain more than three numbers — verify formatting.");
+    if(w.sa && san.length<1) stop(tag+"surface area isn't a number (\""+w.sa+"\") — verify.");
+    if(w.sa && !/^\s*\d/.test(w.sa)) stop(tag+"surface area should begin with a number (\""+w.sa+"\") — verify.");
+    [["length",dn[0]],["width",dn[1]]].forEach(function(p){ if(p[1]!=null && p[1]<=0) stop(tag+p[0]+" is "+p[1]+" cm — must be greater than 0."); });
+    if(/[\u2212\u2013\-]\s*\d/.test(w.dims||"")) stop(tag+"measurements contain a negative or range value — verify.");
+    if(dn.length>=2 && san.length){
+      var calc=dn[0]*dn[1], stated=san[0], diff=Math.abs(calc-stated)/(stated||1);
+      if(diff>0.10) stop(tag+"surface area "+stated+" cm\u00b2 doesn't match L\u00d7W ("+calc.toFixed(1)+" cm\u00b2) — measurement typo.");
+      else if(diff>0.03) confirm(tag+"surface area "+stated+" cm\u00b2 slightly off from L\u00d7W ("+calc.toFixed(1)+" cm\u00b2) — verify.");
+    }
+    // measurement plausibility
+    var L=dn[0],W=dn[1],D=dn[2];
+    ["Length","Width","Depth"].forEach(function(nm,k){var v=dn[k];if(v==null)return;
+      if(v>60) stop(tag+nm+" "+v+" cm implausibly large (>60) — likely typo.");
+      else if(v>30) confirm(tag+nm+" "+v+" cm over 30 — verify decimal.");});
+    if(L!=null&&W!=null&&L*W>200) stop(tag+"surface area "+(L*W).toFixed(0)+" cm\u00b2 implausibly large (>200) — verify.");
+    if(W!=null&&L!=null&&W>L) confirm(tag+"width exceeds length — check labeling.");
+    if(D!=null&&L!=null&&D>L&&D>0) confirm(tag+"depth exceeds length — confirm.");
+    if(D!=null){ if(D>25) stop(tag+"depth "+D+" cm implausibly deep (>25) — likely typo."); else if(D>10) confirm(tag+"depth "+D+" cm unusually deep — verify."); }
+    // decimal slip vs prior (length, width AND depth)
+    var pn=nums(w.prior);
+    if(pn.length>=2 && dn.length>=2)
+      [["Length",dn[0],pn[0]],["Width",dn[1],pn[1]],["Depth",dn[2],pn[2]]].forEach(function(p){var c=p[1],pr=p[2];if(!c||!pr)return;var r=c/pr;if(r>=5||r<=0.2) stop(tag+p[0]+" changed "+(r>=1?r.toFixed(1)+"\u00d7":(1/r).toFixed(1)+"\u00d7")+" vs last visit — likely decimal error.");});
+    // comma used as decimal point (e.g., 4,0) — parses wrong
+    if(/\d,\d/.test(w.dims||"")) confirm(tag+"measurements use a comma as a decimal point — verify formatting.");
+    // tissue % sum
+    var pcts=(w.bed||"").match(/(\d+)\s*%/g);
+    if(pcts){var sum=pcts.reduce(function(a,b){return a+parseInt(b,10);},0);
+      if(sum<95||sum>105) confirm(tag+"wound-bed percentages sum to "+sum+"% (expected ~100%) — verify.");}
+    // procedure marked No but debridement details present
+    if(/^no\b/i.test((w.proc||"").trim()) && (w.debr||w.deepest||w.instrument))
+      confirm(tag+"procedure marked \"No\" but debridement details are present — verify.","w"+i+".proc");
+    // procedure marked Yes — the handoff's Procedure / DBT / instrument boxes need a value; flag each missing one at its row
+    if(/^yes\b/i.test((w.proc||"").trim())){
+      if(!w.debr)       stop(tag+"procedure marked \"Yes\" but type of debridement is missing.","w"+i+".proc");
+      if(!w.deepest)    stop(tag+"procedure marked \"Yes\" but deepest tissue debrided is missing.","w"+i+".deepest");
+      if(!w.instrument) stop(tag+"procedure marked \"Yes\" but instrument used is missing.","w"+i+".instrument");
+    }
+  });
+
+  // duplicate wounds (same location + same measurements) — likely a paste duplicate
+  for(var a=0;a<pt.wounds.length;a++)for(var b=a+1;b<pt.wounds.length;b++){
+    var wa=pt.wounds[a], wb=pt.wounds[b];
+    if(wa.location&&wa.dims&&nmatch(wa.location)===nmatch(wb.location)&&nmatch(wa.dims)===nmatch(wb.dims))
+      confirm("Wounds "+(a+1)+" and "+(b+1)+" have identical location and measurements — verify they aren't a duplicate.");
+  }
+
+  // cross-reference: does the pasted text IMPLY more wounds than were captured?
+  // (catches a partial copy that dropped a wound, when the copy still includes text that references it)
+  var capN=pt.wounds.length;
+  // (1) highest "Wound N" referenced anywhere (label-like references only, to avoid "wound 2 cm")
+  var refRx=/wound\s*#?\s*(\d+)\s*(?=[—–:(,\-]|$)/gim, rm, maxRef=0;
+  while((rm=refRx.exec(noteText))){var num=parseInt(rm[1],10); if(num>maxRef)maxRef=num;}
+  if(capN && maxRef>capN)
+    confirm("The note refers to \u201cWound "+maxRef+"\u201d but only "+capN+" wound block(s) were captured — a wound may have been left out of the copy.");
+  // (2) gap in the captured heading numbers (e.g., Wound 1 and Wound 3, missing 2)
+  var headNums=(noteText.match(/(^|\n)\s*\**\s*wound\s*#?\s*(\d+)\s*[—–:-]/gi)||[]).map(function(s){return parseInt(s.match(/\d+/)[0],10);});
+  if(headNums.length){var mx=Math.max.apply(null,headNums);for(var g=1;g<=mx;g++){if(headNums.indexOf(g)<0){confirm("Wound numbering skips Wound "+g+" (captured "+headNums.join(", ")+") — a wound may be missing.");break;}}}
+  // (3) natural-language count ("two pressure injuries", "3 wounds")
+  var wordN={two:2,three:3,four:4,five:5,six:6};
+  var nl=noteText.match(/\b(two|three|four|five|six|[2-9])\s+(wounds|pressure injuries|pressure ulcers|ulcers|lesions|wound sites)\b/i);
+  if(nl && capN){var stated=wordN[nl[1].toLowerCase()]||parseInt(nl[1],10); if(stated>capN) confirm("The note text mentions \u201c"+nl[1]+" "+nl[2]+"\u201d but only "+capN+" were captured — verify none were missed.");}
+
+  var stops=checks.filter(function(c){return c.sev==="stop";}).length;
+  var confirms=checks.filter(function(c){return c.sev==="confirm";}).length;
+  return {checks:checks, stops:stops, confirms:confirms};
+}
+function keyFromMsg(msg){
+  if(!msg)return null;
+  var wm=msg.match(/^wound\s+(\d+)\s*:/i); if(!wm)return null;
+  var i=parseInt(wm[1],10)-1; if(i<0)return null;
+  var m=msg.toLowerCase(), prop=null;
+  if(/surface area/.test(m)) prop="sa";
+  else if(/wound-bed percentages|wound bed/.test(m)) prop="bed";
+  else if(/procedure/.test(m)) prop="proc";
+  else if(/laterality|heading site|location/.test(m)) prop="location";
+  else if(/measurement|length|width|depth|decimal|negative|range|comma/.test(m)) prop="dims";
+  else {
+    var mm=msg.match(/missing ([a-z/ ]+)\./i) || msg.match(/:\s*([a-z/ ]+?)\s+"/i);
+    if(mm){ var map={"etiology/classification":"etiology","etiology":"etiology","drainage":"drainage","periwound":"periwound","status":"status","wound bed":"bed","measurements":"dims","prior measurements":"prior","surface area":"sa","procedure performed":"proc","debridement type":"proc","deepest tissue":"deepest","instrument":"instrument","location":"location","location/laterality":"location"};
+      prop=map[mm[1].trim().toLowerCase()]||null; }
+  }
+  return prop?("w"+i+"."+prop):null;
+}
+function chkLoc(c){var key=c.key||keyFromMsg(c.msg);return key?(" <span class='chk-loc' data-fkey='"+esc(key)+"' onclick='jumpToField(this)' title='Show this field above'>show \u2934</span>"):"";}
+function renderChecks(v){
+  var stops=v.checks.filter(function(c){return c.sev==="stop";});
+  if(!stops.length) return "<div class='chk ok'>\u2713 No blocking issues.</div>";
+  var h="<div class='chk-grp chk-grp-stop'>\u26d4 Must fix before adding</div>";
+  stops.forEach(function(c){ h+="<div class='chk stop'>"+esc(c.msg)+chkLoc(c)+"</div>"; });
+  return h;
+}
+function renderSignoff(v,nW,pt){
+  var confs=v.checks.filter(function(c){return c.sev==="confirm";});
+  var h="";
+  confs.forEach(function(c){ h+="<div class='so-item'><label><input type='checkbox' class='cfm'> <span>\u26a0 "+esc(c.msg)+"</span></label>"+chkLoc(c)+"</div>"; });
+  if(noteWasEdited()) h+="<div class='so-item'><label><input type='checkbox' class='cfm' id='noteEditAck'> <span>\u26a0 I confirm this still matches the patient\u2019s EHR note.</span></label></div>";
+  if(pt && roster.some(function(r){return norm(r.patient)===norm(pt.patient) && norm(r.dos)===norm(pt.dos) && norm(r.patient);}))
+    h+="<div class='so-item so-warn'><label><input type='checkbox' class='cfm' id='dupAck'> <span>\u26a0 "+esc(pt.patient)+" (DOS "+esc(pt.dos)+") is already on the list. Confirm you want a second entry.</span></label></div>";
+  h+="<div class='so-item so-attest'><label><input type='checkbox' id='attestChk'> <span>I confirm the <b>complete</b> note was pasted and all <b>"+nW+" wound"+(nW===1?"":"s")+"</b> "+(nW===1?"is":"are")+" shown above.</span></label></div>";
+  return h;
+}
+function applyFieldFlags(v){
+  var pv=document.getElementById("preview"); if(!pv)return;
+  pv.querySelectorAll(".ed.field-stop,.ed.field-confirm").forEach(function(e){e.classList.remove("field-stop","field-confirm");});
+  if(!v||!v.checks)return;
+  v.checks.forEach(function(c){
+    var key=c.key||keyFromMsg(c.msg); if(!key)return;
+    var el=pv.querySelector('.ed[data-k="'+key+'"]'); if(!el)return;
+    if(c.sev==="stop"){ el.classList.remove("field-confirm"); el.classList.add("field-stop"); }
+    else if(!el.classList.contains("field-stop")) el.classList.add("field-confirm");
+  });
+}
+function jumpToField(el){
+  var key=el.getAttribute("data-fkey"); if(!key)return;
+  var pv=document.getElementById("preview"); if(!pv)return;
+  var f=pv.querySelector('.ed[data-k="'+key+'"]'); if(!f)return;
+  if(f.scrollIntoView)f.scrollIntoView({behavior:"smooth",block:"center"});
+  f.classList.remove("field-flash"); void f.offsetWidth; f.classList.add("field-flash");
+  setTimeout(function(){f.classList.remove("field-flash");},1300);
+}
+
+/* ---------------- state ---------------- */
+var roster=[];
+function clearNote(){
+  if(pendingPt && window.__lastChecks && window.__lastChecks.stops===0){
+    var pv=document.getElementById("preview");
+    var bar=document.getElementById("clearPrompt");
+    if(!bar){ bar=document.createElement("div"); bar.id="clearPrompt"; bar.className="clearprompt"; pv.parentNode.insertBefore(bar, pv); }
+    bar.innerHTML="<span>\u26a0 <b>"+esc(pendingName())+"</b> isn\u2019t on the running list yet.</span>"+
+      "<span class='cp-btns'><button class='primary' onclick='addToRoster();dismissClearPrompt();'>Add to list</button>"+
+      "<button onclick='forceClearNote()'>Discard &amp; clear box</button>"+
+      "<button class='ghost' onclick='dismissClearPrompt()'>Keep editing</button></span>";
+    bar.style.display="flex";
+    return;
+  }
+  forceClearNote();
+}
+function dismissClearPrompt(){var b=document.getElementById("clearPrompt"); if(b){b.style.display="none"; b.innerHTML="";}}
+function forceClearNote(){
+  dismissClearPrompt();
+  pendingPt=null; window.__lastParsed=null; window.__lastChecks=null;
+  var n=document.getElementById("noteIn"); if(n)n.value=""; clearNoteHighlights();
+  var p=document.getElementById("preview"); if(p)p.innerHTML="";
+  renderPending();
+}
+var __noteBaseline=null; // box-1 text captured at paste / sample load; null = never captured (typed by hand)
+function setNoteBaseline(){ __noteBaseline=(document.getElementById("noteIn").value||""); }
+function noteWasEdited(){
+  var cur=(document.getElementById("noteIn").value||"").trim();
+  if(!cur) return false;                          // empty box — nothing to warn about
+  if(__noteBaseline==null) return true;           // typed in by hand, never pasted
+  return cur!==String(__noteBaseline).trim();     // changed after the paste
+}
+function noteDiff(){
+  var base=String(__noteBaseline==null?"":__noteBaseline).split(/\r?\n/);
+  var cur=String(document.getElementById("noteIn").value||"").split(/\r?\n/);
+  var bc={}, cc={};
+  base.forEach(function(l){l=l.trim(); if(l)bc[l]=(bc[l]||0)+1;});
+  cur.forEach(function(l){l=l.trim(); if(l)cc[l]=(cc[l]||0)+1;});
+  var added=[], removed=[];
+  cur.forEach(function(l){l=l.trim(); if(l && !bc[l] && added.indexOf(l)<0)added.push(l);});
+  base.forEach(function(l){l=l.trim(); if(l && !cc[l] && removed.indexOf(l)<0)removed.push(l);});
+  return {added:added, removed:removed};
+}
+function noteDiffHTML(){
+  if(!noteWasEdited())return "";
+  var ack="";
+  if(__noteBaseline==null)
+    return "<div class='notediff'><b>\u26a0 This note was typed in, not pasted.</b> The sheet will be marked <b>manually corrected</b>."+ack+"</div>";
+  var d=noteDiff();
+  var h="<div class='notediff'><b>\u26a0 Note text changed after pasting.</b> The sheet will be marked <b>manually corrected</b>. What changed:";
+  if(d.added.length) h+="<div class='nd-add'>"+d.added.map(function(l){return "+ "+esc(l);}).join("<br>")+"</div>";
+  if(d.removed.length) h+="<div class='nd-rem'>"+d.removed.map(function(l){return "\u2212 "+esc(l);}).join("<br>")+"</div>";
+  if(!d.added.length && !d.removed.length) h+="<div class='nd-tip'>(whitespace-only change)</div>";
+  h+="<div class='nd-tip'>For a clean sheet, make this change in the EHR note and re-paste.</div>"+ack+"</div>";
+  return h;
+}
+function loadSample(k){ if(pendingPt && !window.confirm("Discard "+pendingName()+" without adding, and load the sample?"))return; document.getElementById("noteIn").value=SAMPLES[k]; setNoteBaseline(); window.__errTargets=[]; parseNote_ui(); }
+function gateMsgHTML(v){
+  if(v.stops>0) return "<span class='gate-stop'>"+v.stops+" hard stop(s) — correct the note (or fix the box) before adding.</span>";
+  var un=0; document.querySelectorAll("#preview .cfm").forEach(function(c){if(!c.checked)un++;});
+  var att=document.getElementById("attestChk"); var attOk=att&&att.checked;
+  var need=[];
+  if(un>0) need.push("check the "+un+" acknowledgment"+(un===1?"":"s")+" above");
+  if(!attOk) need.push("confirm completeness");
+  if(!need.length) return "<span class='gate-ok'>\u2713 Ready — click \u201cAdd to running list.\u201d</span>";
+  return "<span class='gate-confirm'>Still needed: "+need.join(" \u00b7 ")+".</span>";
+}
+function syncAddGate(){
+  var v=window.__lastChecks||{stops:0,confirms:0};
+  var all=true;
+  document.querySelectorAll("#preview .cfm").forEach(function(c){
+    var lab=c.closest("label");
+    if(!c.checked){ all=false; if(lab)lab.classList.add("need"); } else if(lab){ lab.classList.remove("need"); }
+  });
+  var att=document.getElementById("attestChk"); var attOk=att&&att.checked;
+  var attLab=att&&att.closest("label"); if(attLab)attLab.classList.toggle("need",!attOk);
+  var blocked=(v.stops>0)||!all||!attOk;
+  var b=document.getElementById("addBtn"); if(b)b.classList.toggle("notready",blocked);
+  var g=document.getElementById("gateMsg"); if(g)g.innerHTML=gateMsgHTML(v);
+}
+function refreshGateUI(){
+  var v=window.__lastChecks; if(!v)return;
+  var box=document.getElementById("checksBox"); if(box)box.innerHTML=renderChecks(v);
+  var g=document.getElementById("gateMsg"); if(g)g.innerHTML=gateMsgHTML(v);
+  syncAddGate();
+  applyFieldFlags(v);
+}
+function parseNote_ui(){
+  var pt=parseNoteCore(document.getElementById("noteIn").value);
+  window.__lastParsed=pt;
+  var h=noteDiffHTML()+"<div class='kv'><span class='k'>Patient</span>"+edsp(pt.patient,"h.patient")+"</div>"+
+        "<div class='kv'><span class='k'>Facility</span>"+edsp(pt.facility,"h.facility")+"</div>"+
+        "<div class='kv'><span class='k'>Date of Service</span>"+edsp(pt.dos,"h.dos")+"</div>"+
+        "<div class='kv'><span class='k'>Provider</span>"+edsp(pt.provider,"h.provider")+"</div>"+
+        "<div class='kv'><span class='k'>Diagnosis (ICD-10)</span><span class='v'>"+val(pt.dx.join(", "))+"</span></div>";
+  pt.wounds.forEach(function(w,i){
+    h+="<div class='wblock'><div class='wh'>Wound "+(i+1)+" — "+edsp(w.location,"w"+i+".location")+"</div>"+
+       "<div class='kv'><span class='k'>Etiology</span>"+edsp(w.etiology,"w"+i+".etiology")+"</div>"+
+       "<div class='kv'><span class='k'>Dimensions</span>"+edsp(w.dims,"w"+i+".dims")+"<span class='unit'>cm</span></div>"+
+       "<div class='kv'><span class='k'>Prior dimensions</span>"+edsp(w.prior,"w"+i+".prior")+"</div>"+
+       "<div class='kv'><span class='k'>Surface area</span>"+edsp(w.sa,"w"+i+".sa")+"<span class='unit'>cm\u00b2</span></div>"+
+       "<div class='kv'><span class='k'>Gran / Slough / Eschar / Epith</span>"+edsp(fmtTissue(w.bed),"w"+i+".bed")+"</div>"+
+       "<div class='kv'><span class='k'>Tunneling / undermining</span>"+edsp(w.undermining,"w"+i+".undermining")+"</div>"+
+       "<div class='kv'><span class='k'>Drainage</span>"+edsp(w.drainage,"w"+i+".drainage")+"</div>"+
+       "<div class='kv'><span class='k'>Periwound</span>"+edsp(w.periwound,"w"+i+".periwound")+"</div>"+
+       "<div class='kv'><span class='k'>Procedure</span>"+edsp((w.proc||"")+(w.debr?(" \u2014 "+w.debr):""),"w"+i+".proc")+"</div>"+
+       "<div class='kv'><span class='k'>Anesthetic / instrument</span>"+edsp(w.instrument,"w"+i+".instrument")+"</div>"+
+       "<div class='kv'><span class='k'>DBT (deepest tissue)</span>"+edsp(dbt(w.deepest),"w"+i+".deepest")+"</div>"+
+       "<div class='kv'><span class='k'>Progress (status)</span>"+edsp(w.status,"w"+i+".status")+"</div>"+
+       "</div>";
+  });
+  if(!pt.wounds.length)h+="<div class='empty' style='margin-top:8px'>No wound blocks detected — check the note's wound headings.</div>";
+  var v=validateTransfer(pt, document.getElementById("noteIn").value);
+  window.__lastChecks=v;
+  h+="<div class='checks'><div class='checks-h'>Transfer checks</div><div id='checksBox'>"+renderChecks(v)+"</div></div>";
+  var nW=pt.wounds.length;
+  h+="<div class='signoff'><div class='signoff-h'>Confirm before adding</div>"+renderSignoff(v,nW,pt)+"</div>";
+  h+="<div class='btnrow'><button class='primary' id='addBtn' onclick='addToRoster()'>Add to running list</button> <span id='gateMsg'>"+gateMsgHTML(v)+"</span></div>";
+  document.getElementById("preview").innerHTML=h;
+  // confirm checkboxes + completeness attestation gate the add button
+  var pvEl=document.getElementById("preview"); if(pvEl && !pvEl.__gateWired){ pvEl.addEventListener("change",syncAddGate); pvEl.__gateWired=true; }
+  updateNoteHighlights(v.checks);
+  refreshGateUI();
+  // mark a parsed-but-not-added patient as pending
+  pendingPt = (pt.patient || pt.wounds.length) ? pt : null;
+  renderPending();
+}
+/* ---------- paste-box line highlighting ---------- */
+function hlPropRe(p){switch(p){
+  case "location":return /location\s*\/?\s*laterality|^\s*location\b/i;
+  case "etiology":return /etiology|classification/i;
+  case "dims":return /measurement|^\s*L\s*[\u00d7x]\s*W/i;
+  case "sa":return /surface\s*area/i;
+  case "prior":return /prior\s*measurement/i;
+  case "status":return /^\s*status\b/i;
+  case "bed":return /wound\s*bed/i;
+  case "undermining":return /undermining|tunnel/i;
+  case "drainage":return /^\s*drainage\b/i;
+  case "periwound":return /^\s*periwound\b/i;
+  case "proc":return /procedure\s*performed/i;
+  case "deepest":return /deepest\s*tissue/i;
+  case "instrument":return /instrument/i;
+  default:return null;}}
+function hlHdrRe(p){switch(p){
+  case "patient":return /^\s*patient\s*:/i;
+  case "facility":return /^\s*facility\s*:/i;
+  case "dos":return /date of (service|visit)/i;
+  case "provider":return /^\s*provider\s*:/i;
+  default:return null;}}
+function hlWoundRanges(lines){var rs=[],cur=null;for(var i=0;i<lines.length;i++){var m=lines[i].match(/^\s*wound\s+(\d+)\b/i);if(m){if(cur)cur.end=i-1;cur={num:parseInt(m[1],10),start:i,end:lines.length-1};rs.push(cur);}else if(/^\s*plan\b/i.test(lines[i])&&cur){cur.end=i-1;cur=null;}}return rs;}
+function hlKeyOf(c){
+  var key=c.key||keyFromMsg(c.msg); if(key)return key;
+  var msg=c.msg||"",wm=msg.match(/wound\s+(\d+)/i); if(!wm)return null;
+  var i=parseInt(wm[1],10)-1,m=msg.toLowerCase(),prop=null;
+  if(/surface area/.test(m))prop="sa";
+  else if(/wound bed|granulation|slough|eschar/.test(m))prop="bed";
+  else if(/deepest/.test(m))prop="deepest";
+  else if(/instrument/.test(m))prop="instrument";
+  else if(/procedure|debrid/.test(m))prop="proc";
+  else if(/laterality|location/.test(m))prop="location";
+  else if(/measurement|length|width|depth/.test(m))prop="dims";
+  else if(/etiology|classification/.test(m))prop="etiology";
+  else if(/drainage/.test(m))prop="drainage";
+  else if(/periwound/.test(m))prop="periwound";
+  else if(/undermining|tunnel/.test(m))prop="undermining";
+  else if(/\bstatus\b/.test(m))prop="status";
+  else if(/prior/.test(m))prop="prior";
+  return prop?("w"+i+"."+prop):null;
+}
+function hlTargets(checks){var out=[];(checks||[]).forEach(function(c){var key=hlKeyOf(c);if(!key)return;var hm=key.match(/^h\.(\w+)/);if(hm){out.push({w:null,prop:hm[1],sev:c.sev});return;}var wm=key.match(/^w(\d+)\.(\w+)/);if(wm)out.push({w:parseInt(wm[1],10)+1,prop:wm[2],sev:c.sev});});return out;}
+function hlTargetLine(lines,ranges,t){
+  if(t.w==null){var hr=hlHdrRe(t.prop);if(!hr)return -1;for(var i=0;i<lines.length;i++)if(hr.test(lines[i]))return i;return -1;}
+  var rg=null;for(var k=0;k<ranges.length;k++)if(ranges[k].num===t.w){rg=ranges[k];break;}
+  if(!rg)return -1;
+  var re=hlPropRe(t.prop);
+  if(re)for(var j=rg.start;j<=rg.end;j++)if(re.test(lines[j]))return j;
+  if(t.prop==="deepest"||t.prop==="instrument"||t.prop==="proc"||t.prop==="dims"||t.prop==="sa"){var pr=hlPropRe("proc");for(var p=rg.start;p<=rg.end;p++)if(pr.test(lines[p]))return p;}
+  return -1;
+}
+function renderBackdrop(){
+  var ta=document.getElementById("noteIn"),hl=document.getElementById("noteHighlights");if(!ta||!hl)return;
+  var lines=ta.value.split(/\r?\n/),ranges=hlWoundRanges(lines),map={};
+  (window.__errTargets||[]).forEach(function(t){var ln=hlTargetLine(lines,ranges,t);if(ln<0)return;if(map[ln]!=="stop")map[ln]=t.sev;});
+  var fixed=window.__fixedLines||{};
+  hl.innerHTML=lines.map(function(l,i){var cls=map[i]==="stop"?"hl-stop":(map[i]==="confirm"?"hl-confirm":(fixed[i]?"hl-fixed":""));var e=esc(l)||"\u200b";return cls?("<mark class='"+cls+"'>"+e+"</mark>"):e;}).join("\n")+"\n";
+  syncBackdrop();
+}
+function syncBackdrop(){var ta=document.getElementById("noteIn"),hl=document.getElementById("noteHighlights");if(ta&&hl)hl.style.transform="translate("+(-ta.scrollLeft)+"px,"+(-ta.scrollTop)+"px)";}
+function updateNoteHighlights(checks){
+  var prev=window.__errTargets||[],next=hlTargets(checks);
+  var nk={};next.forEach(function(t){nk[(t.w||"h")+"."+t.prop]=1;});
+  var lines=(document.getElementById("noteIn").value||"").split(/\r?\n/),ranges=hlWoundRanges(lines);
+  window.__fixedLines={};
+  prev.forEach(function(t){if(!nk[(t.w||"h")+"."+t.prop]){var ln=hlTargetLine(lines,ranges,t);if(ln>=0)window.__fixedLines[ln]=1;}});
+  window.__errTargets=next;
+  renderBackdrop();
+}
+function clearNoteHighlights(){window.__errTargets=[];window.__fixedLines={};renderBackdrop();}
+
+function parseNote(){parseNote_ui();}
+
+/* ---------- in-place editing + differs-from-note banner ---------- */
+function edsp(raw,key){
+  var s=(raw==null?"":String(raw));
+  return "<span class='v ed' data-k='"+key+"'>"+esc(s)+"</span>";
+}
+var pendingPt=null;
+function pendingName(){return pendingPt?(pendingPt.patient||"(unnamed patient)"):"";}
+function renderPending(){
+  var el=document.getElementById("pendingBanner");
+  if(!el)return;
+  if(!pendingPt){el.style.display="none";el.innerHTML="";return;}
+  var blocked = window.__lastChecks && window.__lastChecks.stops>0;
+  el.style.display="flex";
+  el.innerHTML="<span>\u26a0 <b>"+esc(pendingName())+"</b> has been parsed but is <u>NOT yet on the running list</u>."+
+    (blocked?" Fix the hard stops, then add.":" Click <b>Add to running list</b> to include them.")+"</span>"+
+    "<button class='ghost' onclick='discardPending()'>Discard</button>";
+}
+function discardPending(){
+  if(!pendingPt)return;
+  if(!window.confirm("Discard "+pendingName()+" without adding to the list?"))return;
+  pendingPt=null; window.__lastParsed=null; window.__lastChecks=null;
+  document.getElementById("preview").innerHTML="<div class='empty'>Discarded.</div>";
+  renderPending();
+}
+
+function addToRoster(){
+  if(!window.__lastParsed)return;
+  var pt=window.__lastParsed;
+  var v=window.__lastChecks;
+  if(v && v.stops>0){alert("Cannot add: "+v.stops+" item(s) under \u201cMust fix before adding\u201d still need fixing in the note.");return;}
+  var cbs=document.querySelectorAll("#preview .cfm"), allAck=true;
+  cbs.forEach(function(c){if(!c.checked)allAck=false;});
+  var att=document.getElementById("attestChk");
+  if(!allAck || !att || !att.checked){ syncAddGate(); alert("Before adding, check every box in the \u201cConfirm before adding\u201d section at the bottom (the ones outlined in red still need a check)."); return; }
+  pt.acknowledged=(v&&v.checks?v.checks.filter(function(c){return c.sev==="confirm";}).map(function(c){return c.msg;}):[]);
+  if(noteWasEdited()) pt.acknowledged.push("Note text edited after paste \u2014 confirmed it matches the EHR note.");
+  pt.attestedComplete=true;
+  pt.__corrected=noteWasEdited();
+  roster.push(pt); window.__lastParsed=null; window.__lastChecks=null; pendingPt=null; renderPending();
+  document.getElementById("preview").innerHTML="<div class='chk ok'>\u2713 Added to today\u2019s list \u2014 handoff sheet updated below.</div>";
+  document.getElementById("noteIn").value=""; clearNoteHighlights();
+  renderRoster();
+  generateSheet();
+}
+var undoState=null;
+function refreshSheetIfOpen(){ var s=document.getElementById("sheet"); if(s && s.style.display==="block"){ if(roster.length){ s.innerHTML=sheetHTML(); wireSheetEdit(); } else { s.style.display="none"; s.innerHTML=""; } } }
+function removePt(i){
+  undoState={type:"remove", pt:roster[i], index:i, name:(roster[i]&&roster[i].patient)||"patient"};
+  roster.splice(i,1); renderRoster(); refreshSheetIfOpen();
+}
+function togglePatient(head,ev){ if(ev&&ev.target&&ev.target.closest&&(ev.target.closest(".sv")||ev.target.closest(".wflag")))return; if(head&&head.parentNode) head.parentNode.classList.toggle("collapsed"); }
+function setAllCollapsed(c){ document.querySelectorAll("#sheet .patient").forEach(function(p){p.classList.toggle("collapsed",c);}); }
+function clearRoster(){
+  if(!roster.length)return;
+  if(!window.confirm("Clear all "+roster.length+" patient(s) from today\u2019s list?\n\nYou can undo this right after if it was a mistake."))return;
+  undoState={type:"clear", list:roster.slice(), name:roster.length+" patient(s)"};
+  roster=[]; renderRoster();
+  var s=document.getElementById("sheet"); if(s){s.style.display="none"; s.innerHTML="";}
+}
+function undoRoster(){
+  if(!undoState)return;
+  if(undoState.type==="remove"){ roster.splice(Math.min(undoState.index,roster.length),0,undoState.pt); }
+  else if(undoState.type==="clear"){ roster=undoState.list.slice(); }
+  undoState=null; renderRoster(); refreshSheetIfOpen();
+}
+function dismissUndo(){ undoState=null; renderRoster(); }
+function renderRoster(){
+  document.getElementById("rosterCount").textContent=roster.length;
+  var badge=document.getElementById("rosterCountBadge"); if(badge)badge.textContent=roster.length+(roster.length===1?" patient":" patients");
+  document.getElementById("facLabel").textContent=roster.length?(roster[0].facility||"—"):"—";
+  var el=document.getElementById("roster");
+  var undoBar = undoState ? ("<div class='undobar'><span>"+(undoState.type==="remove"?("Removed <b>"+esc(undoState.name)+"</b>"):("Cleared <b>"+esc(undoState.name)+"</b>"))+"</span><span><button class='linkbtn' onclick='undoRoster()'>Undo</button><button class='linkbtn dim' onclick='dismissUndo()'>Dismiss</button></span></div>") : "";
+  if(!roster.length){ el.innerHTML=undoBar+"<div class='empty'>No patients added yet.</div>"; return; }
+  var dupCount={}; roster.forEach(function(p){ var k=norm(p.patient||"")+"|"+norm(p.dos||""); if(norm(p.patient||"")) dupCount[k]=(dupCount[k]||0)+1; });
+  el.innerHTML=undoBar+roster.map(function(p,i){
+    var isDup=dupCount[norm(p.patient||"")+"|"+norm(p.dos||"")]>1;
+    return "<div class='roster-item"+(isDup?" roster-dup":"")+"'><div><b>"+esc(p.patient||"(no name)")+"</b>"+
+      (isDup?" <span class='badge-dup'>DUPLICATE</span>":"")+
+      ((p.edited||p.sheetEdited)?" <span class='badge-edit'>EDITED</span>":"")+
+      (p.__corrected?" <span class='badge-corr'>CORRECTED</span>":"")+
+      "<div class='meta'>"+esc(p.dos||"")+" · "+esc(p.provider||"")+"</div>"+
+      "<div style='margin-top:5px'>"+p.wounds.map(function(w,j){return "<span class='pill'>W"+(j+1)+" "+esc((w.location||"").split(",")[0])+"</span>";}).join("")+"</div></div>"+
+      "<button class='ghost' onclick='removePt("+i+")'>Remove</button></div>";
+  }).join("");
+}
+
+/* ---------------- handoff sheet ---------------- */
+function tissuePcts(bed){
+  bed=(bed==null?"":String(bed));
+  var cats={Gran:"",Slough:"",Eschar:"",Epith:""};
+  var rx=[["Gran",/gran/i],["Slough",/slough/i],["Eschar",/eschar/i],["Epith",/epith/i]];
+  bed.split(/[,;·]/).forEach(function(tok){
+    var pm=tok.match(/(\d+(?:\.\d+)?)\s*%/); if(!pm)return; var pct=pm[1]+"%";
+    for(var i=0;i<rx.length;i++){ if(rx[i][1].test(tok) && !cats[rx[i][0]]){ cats[rx[i][0]]=pct; break; } }
+  });
+  return cats;
+}
+function fmtTissue(bed){
+  if(!bed||!String(bed).trim())return "";
+  var c=tissuePcts(bed);
+  if(!c.Gran&&!c.Slough&&!c.Eschar&&!c.Epith) return String(bed);
+  function s(v){return v||"0%";}
+  return "Gran "+s(c.Gran)+" \u00b7 Slough "+s(c.Slough)+" \u00b7 Eschar "+s(c.Eschar)+" \u00b7 Epith "+s(c.Epith);
+}
+function woundTreatment(plan,n){
+  for(var i=0;i<plan.length;i++){
+    var line=plan[i], m=line.match(/^\s*\**\s*wound\s*#?\s*(\d+)\b/i);
+    if(m && parseInt(m[1],10)===n){ var ci=line.indexOf(":"); if(ci>=0) return line.slice(ci+1).trim(); }
+  }
+  return "";
+}
+function pdim(v){return (v&&String(v).trim())?withCm(v):"";}
+function psa(v){return (v&&String(v).trim())?withCm2(v):"";}
+function sval(p,key,v){
+  v=(v==null?"":String(v));
+  var has=p.__sheetEdits&&Object.prototype.hasOwnProperty.call(p.__sheetEdits,key);
+  var shown=has?p.__sheetEdits[key]:v;
+  return "<span class='v sv"+(has?" sedited":"")+"' data-k='"+key+"' data-orig='"+esc(v).replace(/'/g,"&#39;")+"'>"+esc(shown)+"</span>"+
+    "<span class='wflag noprint' data-flag='"+key+"'"+(has?"":" style='display:none'")+"><span class='wflag-ic' onclick='toggleFlag(this)' title='Why is this flagged?'>\u26a0</span><span class='wflag-msg'>The edited value(s) no longer match the source note \u2014 verify before this goes to the facility.</span></span>";
+}
+function toggleFlag(ic){ var f=ic.parentNode; if(f) f.classList.toggle("open"); }
+function toggleSheetEdit(btn){
+  var pe=btn.closest(".patient"); if(!pe)return;
+  var on=!pe.classList.contains("editing");
+  pe.classList.toggle("editing",on);
+  pe.querySelectorAll(".sv").forEach(function(s){ s.setAttribute("contenteditable", on?"true":"false"); });
+  btn.textContent = on ? "Done editing" : "Edit fields";
+}
+function onSheetEdit(e){
+  var el=e.target; if(!el||!el.classList||!el.classList.contains("sv"))return;
+  var pe=el.closest(".patient"); if(!pe)return;
+  var idx=+pe.getAttribute("data-idx"); var p=roster[idx]; if(!p)return;
+  if(!p.__sheetEdits)p.__sheetEdits={};
+  var key=el.getAttribute("data-k"), orig=el.getAttribute("data-orig")||"", now=el.textContent;
+  var changed=nmatch(now)!==nmatch(orig);
+  var flag=pe.querySelector(".wflag[data-flag=\""+key+"\"]");
+  if(changed){ p.__sheetEdits[key]=now; el.classList.add("sedited"); if(flag)flag.style.display="inline-block"; }
+  else { delete p.__sheetEdits[key]; el.classList.remove("sedited"); if(flag){flag.style.display="none"; flag.classList.remove("open");} }
+  p.sheetEdited=Object.keys(p.__sheetEdits).length>0;
+  if(typeof renderRoster==="function") renderRoster();
+}
+function wireSheetEdit(){ var s=document.getElementById("sheet"); if(s&&!s.__editWired){ s.addEventListener("input",onSheetEdit); s.__editWired=true; } }
+function patientHTML(p,idx){
+  var nW=p.wounds.length;
+  var head="<div class='phead' onclick='togglePatient(this,event)' title='Click to minimize / expand'>"+
+    "<span class='caret'>\u25be</span>"+
+    "<div class='pf'><b>Patient:</b> "+sval(p,"h.patient",p.patient)+"</div>"+
+    "<span class='psummary'>"+nW+" wound"+(nW===1?"":"s")+"</span>"+
+    "<div class='pf pf-sec'><b>Facility:</b> "+sval(p,"h.facility",p.facility)+"</div>"+
+    "<div class='pf'><b>Date of Service:</b> "+sval(p,"h.dos",p.dos)+"</div>"+
+    "<div class='pf pf-sec'><b>Provider:</b> "+sval(p,"h.provider",p.provider)+"</div>"+
+    "<div class='pf pf-sec'><b>Dx:</b> "+sval(p,"h.dx",p.dx.join(", "))+"</div></div>";
+  var wounds=p.wounds.map(function(w,i){
+    function row(k,key,v){return "<div class='wrow'><span class='k'>"+k+"</span>"+sval(p,"w"+i+"."+key,v)+"</div>";}
+    return "<div class='wtitle'>Wound "+(i+1)+" — "+esc(w.location||"")+"</div><div class='wgrid'>"+
+      row("Etiology","etiology",w.etiology)+
+      row("Dimensions","dims",pdim(w.dims))+
+      row("Prior dimensions","prior",pdim(w.prior))+
+      row("Surface area","sa",psa(w.sa))+
+      row("Gran / Slough / Eschar / Epith","bed",fmtTissue(w.bed))+
+      row("Tunneling / undermining at","undermining",w.undermining)+
+      row("Drainage","drainage",w.drainage)+
+      row("Periwound","periwound",w.periwound)+
+      row("Procedure","procedure",(w.proc||"")+(w.debr?(" \u2014 "+w.debr):""))+
+      row("Anesthetic / instrument","instrument",w.instrument)+
+      row("DBT level","dbt",dbt(w.deepest))+
+      row("Progress","progress",progress(w.status))+
+      row("Treatment","treatment",woundTreatment(p.plan,i+1))+
+      "</div>";
+  }).join("");
+  var genOrders=p.plan.filter(function(x){return !/^\s*\**\s*wound\s*#?\s*\d+\b/i.test(x);});
+  var plan=genOrders.length?("<div class='plan'><b>Orders</b><ul>"+genOrders.map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+"</ul></div>"):"";
+  var editrow="<div class='editrow noprint'><button class='editbtn' onclick='toggleSheetEdit(this)'>Edit fields</button> <span class='edithint'>fix anything that looks off, then click Done</span></div>";
+  var stamp=p.__corrected?("<div class='sheet-stamp'>\u26a0 MANUALLY CORRECTED \u2014 this sheet was edited after the note was pasted; verify against the signed EHR note before relying on it.</div>"):"";
+  return "<div class='patient' data-idx='"+idx+"'>"+head+stamp+"<div class='pbody'>"+wounds+plan+"<div class='sheet-disclaimer'>Care-coordination handoff — for facility use only. Not an official medical record, provider note, or billing document; the signed EHR note is the authoritative record.</div>"+editrow+"</div></div>";
+}
+function sheetHTML(){
+  var date=roster.length?(roster[0].dos||""):"";
+  var fac=roster.length?(roster[0].facility||""):"";
+  return "<h2 style='font-size:18px;margin:0 0 4px;color:#16242f'>Wound Care Handoff — "+esc(fac)+"</h2>"+
+    "<div style='color:#44545f;font-size:13px;margin-bottom:10px'>Date of service: "+esc(date)+" · "+roster.length+" patient(s)</div>"+
+    "<div class='noprint collapsebar'><button onclick='setAllCollapsed(false)'>Expand all</button> <button onclick='setAllCollapsed(true)'>Collapse all</button> <span class='hint'>tip: click any patient header to minimize it</span></div>"+
+    roster.map(patientHTML).join("");
+}
+function pendingGuard(action){
+  if(pendingPt){
+    return window.confirm("\u26a0 "+pendingName()+" has been parsed but is NOT on the running list, so they will be MISSING from the handoff.\n\nClick Cancel to go back and add them first, or OK to "+action+" without them.");
+  }
+  return true;
+}
+function generateSheet(){
+  if(!roster.length){alert("Add at least one patient first.");return;}
+  if(!pendingGuard("generate the sheet"))return;
+  var s=document.getElementById("sheet");
+  s.innerHTML=sheetHTML(); s.style.display="block"; wireSheetEdit();
+  if(s.scrollIntoView)s.scrollIntoView({behavior:"smooth"});
+}
+function printPreview(){
+  if(!roster.length){alert("Add at least one patient first.");return;}
+  if(!pendingGuard("preview the print"))return;
+  var s=document.getElementById("sheet");
+  if(s.style.display!=="block" || !s.innerHTML){ s.innerHTML=sheetHTML(); wireSheetEdit(); }
+  s.style.display="block";
+  if(typeof setAllCollapsed==="function") setAllCollapsed(false);
+  var c=document.getElementById("ppCount"); if(c)c.textContent=roster.length;
+  document.body.classList.add("ppmode");
+  window.scrollTo(0,0);
+}
+function exitPreview(){ document.body.classList.remove("ppmode"); }
+function printSheet(){
+  if(!roster.length){alert("Add at least one patient first.");return;}
+  if(!pendingGuard("print"))return;
+  var s=document.getElementById("sheet");
+  if(s.style.display!=="block" || !s.innerHTML){ s.innerHTML=sheetHTML(); s.style.display="block"; wireSheetEdit(); }
+  window.print();
+}
+/* ---------- Word (.docx) handoff generation (self-contained, no libraries) ---------- */
+function _u8(str){return new TextEncoder().encode(str);}
+var _crcTable=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+function _crc32(u8){var c=0xFFFFFFFF;for(var i=0;i<u8.length;i++)c=_crcTable[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function _zip(files){
+  var chunks=[],central=[],offset=0;
+  function w16(n){return [n&0xFF,(n>>>8)&0xFF];}
+  function w32(n){return [n&0xFF,(n>>>8)&0xFF,(n>>>16)&0xFF,(n>>>24)&0xFF];}
+  files.forEach(function(f){
+    var nameB=_u8(f.name),data=f.bytes,crc=_crc32(data);
+    var local=[].concat(w32(0x04034b50),w16(20),w16(0),w16(0),w16(0),w16(0),w32(crc),w32(data.length),w32(data.length),w16(nameB.length),w16(0));
+    chunks.push(new Uint8Array(local),nameB,data);
+    var cen=[].concat(w32(0x02014b50),w16(20),w16(20),w16(0),w16(0),w16(0),w16(0),w32(crc),w32(data.length),w32(data.length),w16(nameB.length),w16(0),w16(0),w16(0),w16(0),w32(0),w32(offset));
+    central.push(new Uint8Array(cen),nameB);
+    offset+=local.length+nameB.length+data.length;
+  });
+  var centralSize=0;central.forEach(function(c){centralSize+=c.length;});
+  var end=new Uint8Array([].concat(w32(0x06054b50),w16(0),w16(0),w16(files.length),w16(files.length),w32(centralSize),w32(offset),w16(0)));
+  var all=chunks.concat(central,[end]);
+  var total=0;all.forEach(function(a){total+=a.length;});
+  var out=new Uint8Array(total),p=0;all.forEach(function(a){out.set(a,p);p+=a.length;});
+  return out;
+}
+function _xe(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function _wp(runs,opts){opts=opts||{};
+  var sp=opts.heading?"<w:spacing w:before='160' w:after='40'/>":(opts.title?"<w:spacing w:after='40'/>":"<w:spacing w:after='20'/>");
+  var pPr="<w:pPr>"+sp+"</w:pPr>";
+  var r=runs.map(function(x){var rPr="<w:rPr>"+(x.bold?"<w:b/>":"")+(x.size?("<w:sz w:val='"+x.size+"'/>"):"")+(x.color?("<w:color w:val='"+x.color+"'/>"):"")+"</w:rPr>";return "<w:r>"+rPr+"<w:t xml:space='preserve'>"+_xe(x.t)+"</w:t></w:r>";}).join("");
+  return "<w:p>"+pPr+r+"</w:p>";
+}
+function _dfval(p,key,raw){var e=p.__sheetEdits||{};return (key in e)?e[key]:(raw==null?"":String(raw));}
+function generateWordBody(){
+  var out=[],fac=roster.length?(roster[0].facility||""):"",date=roster.length?(roster[0].dos||""):"";
+  out.push(_wp([{t:"Wound Care Handoff \u2014 "+fac,bold:true,size:32,color:"16242F"}],{title:true}));
+  out.push(_wp([{t:"Date of service: "+date+"    \u00b7    "+roster.length+" patient(s)",size:18,color:"44545F"}]));
+  roster.forEach(function(p,pi){
+    if(pi>0) out.push("<w:p><w:pPr><w:pageBreakBefore/></w:pPr></w:p>");
+    out.push(_wp([{t:"Patient: ",bold:true,size:24},{t:_dfval(p,"h.patient",p.patient),size:24}],{heading:true}));
+    out.push(_wp([{t:"Facility: ",bold:true},{t:_dfval(p,"h.facility",p.facility)},{t:"     Date of Service: ",bold:true},{t:_dfval(p,"h.dos",p.dos)}]));
+    out.push(_wp([{t:"Provider: ",bold:true},{t:_dfval(p,"h.provider",p.provider)},{t:"     Dx: ",bold:true},{t:_dfval(p,"h.dx",(p.dx||[]).join(", "))}]));
+    p.wounds.forEach(function(w,i){
+      out.push(_wp([{t:"Wound "+(i+1)+" \u2014 "+(w.location||""),bold:true,size:24,color:"C0453C"}],{heading:true}));
+      function rp(label,key,val){out.push(_wp([{t:label+":  ",bold:true},{t:_dfval(p,"w"+i+"."+key,val)}]));}
+      rp("Etiology","etiology",w.etiology);
+      rp("Dimensions","dims",pdim(w.dims));
+      rp("Prior dimensions","prior",pdim(w.prior));
+      rp("Surface area","sa",psa(w.sa));
+      rp("Gran / Slough / Eschar / Epith","bed",fmtTissue(w.bed));
+      rp("Tunneling / undermining","undermining",w.undermining);
+      rp("Drainage","drainage",w.drainage);
+      rp("Periwound","periwound",w.periwound);
+      rp("Procedure","procedure",(w.proc||"")+(w.debr?(" \u2014 "+w.debr):""));
+      rp("Anesthetic / instrument","instrument",w.instrument);
+      rp("DBT level","dbt",dbt(w.deepest));
+      rp("Progress","progress",progress(w.status));
+      rp("Treatment","treatment",woundTreatment(p.plan,i+1));
+    });
+    var genOrders=p.plan.filter(function(x){return !/^\s*\**\s*wound\s*#?\s*\d+\b/i.test(x);});
+    if(genOrders.length){out.push(_wp([{t:"Orders",bold:true,size:22}],{heading:true}));genOrders.forEach(function(x){out.push(_wp([{t:"\u2022  "+x}]));});}
+    out.push(_wp([{t:"Care-coordination handoff \u2014 for facility use only. Not an official medical record, provider note, or billing document; the signed EHR note is the authoritative record.",size:15,color:"7A7A7A"}]));
+  });
+  return out.join("");
+}
+function generateWordDocx(){
+  var CT="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>";
+  var RELS="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>";
+  var DOC="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>"+generateWordBody()+"<w:sectPr><w:pgSz w:w=\"12240\" w:h=\"15840\"/><w:pgMar w:top=\"1080\" w:right=\"1080\" w:bottom=\"1080\" w:left=\"1080\"/></w:sectPr></w:body></w:document>";
+  return _zip([{name:"[Content_Types].xml",bytes:_u8(CT)},{name:"_rels/.rels",bytes:_u8(RELS)},{name:"word/document.xml",bytes:_u8(DOC)}]);
+}
+function wordFilename(){var fac=(canonicalFacility(currentFacilityRaw())||"handoff").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"");var date=isoDate(currentDosRaw()).replace(/[^0-9-]/g,"");return (date?date+"_":"")+fac+"_Handoff.docx";}
+function downloadWord(){
+  if(!roster.length){alert("Add at least one patient first.");return;}
+  if(!pendingGuard("download the Word handoff"))return;
+  var bytes=generateWordDocx();
+  var blob=new Blob([bytes],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=wordFilename();a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1500);
+}
+/* ---------- Save to ClinicalVault (MSAL sign-in + Microsoft Graph upload) ----------
+   The tool talks ONLY to Microsoft: login.microsoftonline.com (sign-in) and
+   graph.microsoft.com (upload to the practice's own SharePoint). No third parties.
+   PHI is entered in the browser and goes directly to the practice's own tenant. */
+var VAULT_CFG = {
+  clientId:  "3702875f-471b-4878-a009-8a2575b41db3",
+  tenantId:  "cc541639-168a-4a8d-9880-4e3628918b70",
+  redirectUri:"https://handoff.lavidaheal.com",
+  spHost:    "lavidah.sharepoint.com",
+  sitePath:  "/sites/ClinicalVault",
+  scopes:    ["Sites.ReadWrite.All"]
+};
+var _pca=null;
+async function _getPca(){
+  if(_pca) return _pca;
+  if(!(window.msal && window.msal.PublicClientApplication))
+    throw new Error("Sign-in library didn't load. Make sure msal-browser.min.js is deployed next to index.html.");
+  _pca=new window.msal.PublicClientApplication({
+    auth:{ clientId:VAULT_CFG.clientId, authority:"https://login.microsoftonline.com/"+VAULT_CFG.tenantId, redirectUri:VAULT_CFG.redirectUri },
+    cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:false }  // session-scoped token cache; nothing persists past the tab
+  });
+  await _pca.initialize();
+  return _pca;
+}
+async function _graphToken(){
+  var pca=await _getPca(), req={scopes:VAULT_CFG.scopes};
+  var acct=pca.getAllAccounts()[0];
+  if(acct){ try{ return (await pca.acquireTokenSilent(Object.assign({account:acct},req))).accessToken; }catch(e){/* fall through to interactive */} }
+  var r=await pca.loginPopup(req);
+  var a=(r&&r.account)||pca.getAllAccounts()[0];
+  return (await pca.acquireTokenSilent(Object.assign({account:a},req))).accessToken;
+}
+function _gfetch(url,token,opts){ opts=opts||{}; opts.headers=Object.assign({Authorization:"Bearer "+token},opts.headers||{}); return fetch(url,opts); }
+function _encPath(rel){ return rel.split("/").map(encodeURIComponent).join("/"); }
+async function _siteId(token){
+  var r=await _gfetch("https://graph.microsoft.com/v1.0/sites/"+VAULT_CFG.spHost+":"+VAULT_CFG.sitePath,token);
+  if(!r.ok) throw new Error("Couldn't find the ClinicalVault site (HTTP "+r.status+"). Check you signed in with a Lavida account that has access.");
+  return (await r.json()).id;
+}
+async function _driveId(token,siteId){
+  var r=await _gfetch("https://graph.microsoft.com/v1.0/sites/"+siteId+"/drive",token);
+  if(!r.ok) throw new Error("Couldn't open the document library (HTTP "+r.status+").");
+  return (await r.json()).id;
+}
+async function _ensureFolders(token,driveId,segs){
+  var parent="";
+  for(var i=0;i<segs.length;i++){
+    var seg=segs[i], childRel=parent?parent+"/"+seg:seg;
+    var c=await _gfetch("https://graph.microsoft.com/v1.0/drives/"+driveId+"/root:/"+_encPath(childRel),token);
+    if(c.status===404){
+      var parentUrl=parent
+        ? "https://graph.microsoft.com/v1.0/drives/"+driveId+"/root:/"+_encPath(parent)+":/children"
+        : "https://graph.microsoft.com/v1.0/drives/"+driveId+"/root/children";
+      var mk=await _gfetch(parentUrl,token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:seg,folder:{},"@microsoft.graph.conflictBehavior":"fail"})});
+      if(!mk.ok && mk.status!==409) throw new Error("Couldn't create the \""+seg+"\" folder (HTTP "+mk.status+").");
+    } else if(!c.ok){ throw new Error("Folder check failed (HTTP "+c.status+")."); }
+    parent=childRel;
+  }
+}
+async function _uploadDocx(token,driveId,segs,filename,bytes){
+  var url="https://graph.microsoft.com/v1.0/drives/"+driveId+"/root:/"+_encPath(segs.join("/")+"/"+filename)+":/content";
+  var r=await _gfetch(url,token,{method:"PUT",headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.wordprocessingml.document"},body:bytes});
+  if(!r.ok) throw new Error("Upload failed (HTTP "+r.status+").");
+  return await r.json();
+}
+function _vaultStatus(t){ var b=document.getElementById("saveVaultBtn"); if(b) b.textContent=t; }
+function showVaultResult(okFlag,msg,url){
+  var el=document.getElementById("vaultResult"); if(!el) return;
+  el.className="vault-result "+(okFlag?"vault-ok":"vault-err");
+  el.innerHTML=(okFlag?"\u2713 ":"\u26a0 ")+esc(msg)+(okFlag&&url?(" &middot; <a href='"+esc(url)+"' target='_blank' rel='noopener'>open in SharePoint</a>"):"");
+  el.style.display="block";
+}
+async function saveToVault(){
+  if(!roster.length){ alert("Add at least one patient first."); return; }
+  if(!pendingGuard("save to ClinicalVault")) return;
+  var btn=document.getElementById("saveVaultBtn"); var label=btn?btn.textContent:"";
+  if(btn) btn.disabled=true;
+  try{
+    _vaultStatus("Signing in\u2026");
+    var token=await _graphToken();
+    var fac=canonicalFacility(currentFacilityRaw())||"Unfiled";
+    var day=isoDate(currentDosRaw())||"undated";
+    var segs=["Daily Handoffs",fac,day];
+    _vaultStatus("Preparing folder\u2026");
+    var siteId=await _siteId(token);
+    var driveId=await _driveId(token,siteId);
+    await _ensureFolders(token,driveId,segs);
+    _vaultStatus("Uploading\u2026");
+    var item=await _uploadDocx(token,driveId,segs,wordFilename(),generateWordDocx());
+    _vaultStatus("\u2713 Saved");
+    showVaultResult(true,"Saved to "+segs.join(" / ")+"  \u2014  "+wordFilename(),(item&&item.webUrl)||"");
+  }catch(e){
+    _vaultStatus("Save failed");
+    showVaultResult(false,(e&&e.message)||String(e),"");
+  }finally{
+    if(btn) btn.disabled=false;
+    setTimeout(function(){ _vaultStatus("Save to ClinicalVault"); },4000);
+  }
+}
+function downloadSheet(){
+  if(!roster.length){alert("Add at least one patient first.");return;}
+  if(!pendingGuard("download the sheet"))return;
+  var css=document.querySelector("style").textContent;
+  var html="<!doctype html><meta charset='utf-8'><title>Wound Handoff</title><style>"+css+
+    " #sheet{display:block!important;} .wrap>*:not(#sheet){display:none;} .noprint{display:none!important;} .sheet-stamp{display:none!important;} .sv{outline:none!important;background:transparent!important;}</style><div class='wrap'><div id='sheet'>"+sheetHTML()+"</div></div>";
+  var blob=new Blob([html],{type:"text/html"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  var fac=(roster[0].facility||"facility").replace(/[^a-z0-9]+/gi,"_");
+  var date=(roster[0].dos||"").replace(/[^0-9]/g,"");
+  a.download="Wound_Handoff_"+fac+"_"+date+".html";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+window.addEventListener("beforeunload",function(e){ if(pendingPt){e.preventDefault();e.returnValue="";} });
+
+/* pre-initialize MSAL on load so the Save click isn't preceded by an await (keeps sign-in popup out of blocker range). Silent no-op if the library isn't present. */
+try{ if(window.msal && window.msal.PublicClientApplication){ _getPca().catch(function(){}); } }catch(e){}
+
+/* wire the Parse button to the ui function */
+document.addEventListener("DOMContentLoaded",function(){ renderRoster(); var ni=document.getElementById("noteIn"); if(ni){ ni.addEventListener("paste",function(){ var wasEmpty=!(ni.value||"").trim(); if(wasEmpty) setTimeout(setNoteBaseline,0); }); ni.addEventListener("input",function(){window.__fixedLines={};renderBackdrop();}); ni.addEventListener("scroll",syncBackdrop); } document.addEventListener("keydown",function(e){ if(e.key==="Escape" && document.body.classList.contains("ppmode")) exitPreview(); }); });
+</script>
