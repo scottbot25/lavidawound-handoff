@@ -1223,7 +1223,7 @@ async function _getPca(){
     throw new Error("Sign-in library didn't load. Make sure msal-browser.min.js is deployed next to index.html.");
   _pca=new window.msal.PublicClientApplication({
     auth:{ clientId:VAULT_CFG.clientId, authority:"https://login.microsoftonline.com/"+VAULT_CFG.tenantId, redirectUri:VAULT_CFG.redirectUri },
-    cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:false }  // session-scoped token cache; nothing persists past the tab
+    cache:{ cacheLocation:"localStorage", storeAuthStateInCookie:true }  // localStorage is shared between the popup and main window (sessionStorage isn't reliably); cookie is a handshake fallback
   });
   await _pca.initialize();
   return _pca;
