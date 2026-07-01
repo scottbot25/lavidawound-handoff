@@ -1211,7 +1211,7 @@ function downloadWord(){
 var VAULT_CFG = {
   clientId:  "3702875f-471b-4878-a009-8a2575b41db3",
   tenantId:  "cc541639-168a-4a8d-9880-4e3628918b70",
-  redirectUri:"https://handoff.lavidaheal.com/redirect.html",
+  redirectUri:"https://handoff.lavidaheal.com",
   spHost:    "lavidah.sharepoint.com",
   sitePath:  "/sites/ClinicalVault",
   scopes:    ["Sites.ReadWrite.All"]
@@ -1223,19 +1223,21 @@ async function _getPca(){
     throw new Error("Sign-in library didn't load. Make sure msal-browser.min.js is deployed next to index.html.");
   _pca=new window.msal.PublicClientApplication({
     auth:{ clientId:VAULT_CFG.clientId, authority:"https://login.microsoftonline.com/"+VAULT_CFG.tenantId, redirectUri:VAULT_CFG.redirectUri },
-    cache:{ cacheLocation:"localStorage", storeAuthStateInCookie:true }  // localStorage is shared between the popup and main window (sessionStorage isn't reliably); cookie is a handshake fallback
+    cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:true }  // redirect flow is single-window; sessionStorage survives the round-trip and clears on tab close (PHI-friendly); cookie is the handshake fallback
   });
   await _pca.initialize();
   return _pca;
 }
-async function _graphToken(){
+async function _silentToken(){
   var pca=await _getPca(), req={scopes:VAULT_CFG.scopes};
   var acct=pca.getAllAccounts()[0];
-  if(acct){ try{ return (await pca.acquireTokenSilent(Object.assign({account:acct},req))).accessToken; }catch(e){/* fall through to interactive */} }
-  var r=await pca.loginPopup(req);
-  var a=(r&&r.account)||pca.getAllAccounts()[0];
-  return (await pca.acquireTokenSilent(Object.assign({account:a},req))).accessToken;
+  if(acct){ try{ return (await pca.acquireTokenSilent(Object.assign({account:acct},req))).accessToken; }catch(e){} }
+  return null;   // caller will redirect to sign in
 }
+/* stash the running list across the sign-in redirect (sessionStorage: survives the same-tab round-trip, clears on tab close) */
+function _stashState(){ try{ sessionStorage.setItem("__wh_roster",JSON.stringify(roster)); sessionStorage.setItem("__wh_pending","1"); }catch(e){} }
+function _clearStash(){ try{ sessionStorage.removeItem("__wh_roster"); sessionStorage.removeItem("__wh_pending"); }catch(e){} }
+function _restoreState(){ try{ var r=sessionStorage.getItem("__wh_roster"); if(r){ var a=JSON.parse(r); if(Array.isArray(a)){ roster.length=0; a.forEach(function(p){roster.push(p);}); } } }catch(e){} }
 function _gfetch(url,token,opts){ opts=opts||{}; opts.headers=Object.assign({Authorization:"Bearer "+token},opts.headers||{}); return fetch(url,opts); }
 function _encPath(rel){ return rel.split("/").map(encodeURIComponent).join("/"); }
 async function _siteId(token){
@@ -1276,14 +1278,9 @@ function showVaultResult(okFlag,msg,url){
   el.innerHTML=(okFlag?"\u2713 ":"\u26a0 ")+esc(msg)+(okFlag&&url?(" &middot; <a href='"+esc(url)+"' target='_blank' rel='noopener'>open in SharePoint</a>"):"");
   el.style.display="block";
 }
-async function saveToVault(){
-  if(!roster.length){ alert("Add at least one patient first."); return; }
-  if(!pendingGuard("save to ClinicalVault")) return;
-  var btn=document.getElementById("saveVaultBtn"); var label=btn?btn.textContent:"";
-  if(btn) btn.disabled=true;
+async function _uploadFlow(token){
+  var btn=document.getElementById("saveVaultBtn"); if(btn) btn.disabled=true;
   try{
-    _vaultStatus("Signing in\u2026");
-    var token=await _graphToken();
     var fac=canonicalFacility(currentFacilityRaw())||"Unfiled";
     var day=isoDate(currentDosRaw())||"undated";
     var segs=["Daily Handoffs",fac,day];
@@ -1303,6 +1300,41 @@ async function saveToVault(){
     setTimeout(function(){ _vaultStatus("Save to ClinicalVault"); },4000);
   }
 }
+async function saveToVault(){
+  if(!roster.length){ alert("Add at least one patient first."); return; }
+  if(!pendingGuard("save to ClinicalVault")) return;
+  var btn=document.getElementById("saveVaultBtn"); if(btn) btn.disabled=true;
+  try{
+    _vaultStatus("Signing in\u2026");
+    var token=await _silentToken();
+    if(!token){
+      // not signed in — stash the list and send the whole window to Microsoft (no popup). We land back here signed in.
+      _stashState();
+      _vaultStatus("Redirecting to sign in\u2026");
+      var pca=await _getPca();
+      await pca.acquireTokenRedirect({scopes:VAULT_CFG.scopes});
+      return; // navigation happens; _resumeAfterRedirect() finishes the save on return
+    }
+    await _uploadFlow(token);
+  }catch(e){
+    _vaultStatus("Save failed");
+    showVaultResult(false,(e&&e.message)||String(e),"");
+    if(btn) btn.disabled=false;
+  }
+}
+/* On load: complete any sign-in redirect and auto-finish a save that was in progress before the redirect. */
+async function _resumeAfterRedirect(){
+  if(!(window.msal && window.msal.PublicClientApplication)) return;
+  var pca=await _getPca();
+  var result=await pca.handleRedirectPromise();
+  if(sessionStorage.getItem("__wh_pending")==="1"){
+    _restoreState(); _clearStash();
+    try{ renderRoster(); }catch(e){}
+    if(roster.length){ try{ generateSheet(); }catch(e){} }
+    var token=(result && result.accessToken) ? result.accessToken : await _silentToken();
+    if(token && roster.length){ await _uploadFlow(token); }
+  }
+}
 function downloadSheet(){
   if(!roster.length){alert("Add at least one patient first.");return;}
   if(!pendingGuard("download the sheet"))return;
@@ -1319,7 +1351,8 @@ function downloadSheet(){
 window.addEventListener("beforeunload",function(e){ if(pendingPt){e.preventDefault();e.returnValue="";} });
 
 /* pre-initialize MSAL on load so the Save click isn't preceded by an await (keeps sign-in popup out of blocker range). Silent no-op if the library isn't present. */
-try{ if(window.msal && window.msal.PublicClientApplication){ _getPca().catch(function(){}); } }catch(e){}
+/* On load: finish any in-progress sign-in redirect and auto-complete the pending save. Silent no-op if MSAL isn't present. */
+try{ if(window.msal && window.msal.PublicClientApplication){ _resumeAfterRedirect().catch(function(e){ showVaultResult(false,(e&&e.message)||String(e),""); }); } }catch(e){}
 
 /* wire the Parse button to the ui function */
 document.addEventListener("DOMContentLoaded",function(){ renderRoster(); var ni=document.getElementById("noteIn"); if(ni){ ni.addEventListener("paste",function(){ var wasEmpty=!(ni.value||"").trim(); if(wasEmpty) setTimeout(setNoteBaseline,0); }); ni.addEventListener("input",function(){window.__fixedLines={};renderBackdrop();}); ni.addEventListener("scroll",syncBackdrop); } document.addEventListener("keydown",function(e){ if(e.key==="Escape" && document.body.classList.contains("ppmode")) exitPreview(); }); });
