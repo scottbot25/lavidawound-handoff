@@ -5,24 +5,7 @@
 <body style="font:15px system-ui,Segoe UI,Arial;padding:24px;color:#44545f">
   Signing you in… this window will close automatically.
 </body>
-<!-- Lightweight MSAL redirect landing page. The sign-in popup lands here (not the full app),
-     MSAL completes the handshake, hands the token back to the tool, and closes this window. -->
-<script src="msal-browser.min.js"></script>
-<script>
-(async function(){
-  try{
-    var pca = new msal.PublicClientApplication({
-      auth:{
-        clientId:   "3702875f-471b-4878-a009-8a2575b41db3",
-        authority:  "https://login.microsoftonline.com/cc541639-168a-4a8d-9880-4e3628918b70",
-        redirectUri:"https://handoff.lavidaheal.com/redirect.html"
-      },
-      cache:{ cacheLocation:"sessionStorage", storeAuthStateInCookie:false }
-    });
-    await pca.initialize();
-    await pca.handleRedirectPromise();  // in a popup, forwards the result to the opener and closes
-  }catch(e){
-    document.body.textContent = "Sign-in error: " + ((e && e.message) || e) + " — you can close this window.";
-  }
-})();
-</script>
+<!-- Blank MSAL redirect landing page for POPUP sign-in.
+     It intentionally runs NO script: the main app window monitors this page,
+     reads the sign-in response, completes the token exchange, and closes this window.
+     (The redirect page must NOT run MSAL itself in popup mode.) -->
